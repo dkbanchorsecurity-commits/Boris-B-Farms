@@ -15,8 +15,8 @@
         .sidebar { width: 260px; background-color: var(--primary-color); color: white; display: flex; flex-direction: column; box-shadow: 2px 0 5px rgba(0,0,0,0.1); height: 100%; z-index: 2000; transition: transform 0.3s ease; }
         .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1500; }
         .brand { padding: 20px; text-align: center; background-color: #153216; border-bottom: 2px solid var(--secondary-color); }
-        .brand h2 { margin: 0; font-size: 24px; color: var(--secondary-color); letter-spacing: 1px; }
-        .brand p { margin: 5px 0 0 0; font-size: 12px; color: #ccc; }
+        .brand img { max-width: 100%; max-height: 100px; background: white; padding: 5px; border-radius: 8px; }
+        
         .nav-links { list-style: none; padding: 0; margin: 20px 0; overflow-y: auto;}
         .nav-item { padding: 15px 25px; cursor: pointer; display: flex; align-items: center; gap: 15px; font-size: 15px; transition: all 0.3s ease; }
         .nav-item:hover, .nav-item.active { background-color: var(--sidebar-hover); border-left: 4px solid var(--secondary-color); }
@@ -28,7 +28,7 @@
         /* Mobile Header (Now inside main-wrapper) */
         .mobile-header { display: none; background-color: var(--primary-color); color: white; padding: 15px 20px; align-items: center; justify-content: space-between; z-index: 1000; width: 100%; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
         .mobile-header button { background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 10px; margin: -10px; display: flex; align-items: center; justify-content: center;}
-        .mobile-header h2 { margin: 0; font-size: 20px; color: var(--secondary-color); letter-spacing: 1px;}
+        .mobile-header img { height: 40px; background: white; padding: 4px; border-radius: 4px; }
 
         .main-content { flex: 1; padding: 30px; overflow-y: auto; width: 100%; position: relative; }
         
@@ -92,32 +92,36 @@
 </head>
 <body>
 
+    <!-- Sidebar Overlay (Mobile only) -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="window.toggleSidebar()"></div>
 
+    <!-- Sidebar Navigation -->
     <div class="sidebar" id="sidebar">
         <div class="brand">
-            <h2>Boris B Farms</h2>
-            <p>Premium Poultry Feeds</p>
+            <img src="logo.png" alt="Boris B's Chicken">
         </div>
         <ul class="nav-links">
             <li class="nav-item active" onclick="window.switchTab('dashboard', this)"><i class="fas fa-chart-line"></i> Dashboard</li>
-            <li class="nav-item" onclick="window.switchTab('sales', this)"><i class="fas fa-cash-register"></i> Sales</li>
             <li class="nav-item" onclick="window.switchTab('inventory', this)"><i class="fas fa-boxes"></i> Inventory Management</li>
+            <li class="nav-item" onclick="window.switchTab('sales', this)"><i class="fas fa-cash-register"></i> Sales</li>
             <li class="nav-item" onclick="window.switchTab('returned', this)"><i class="fas fa-undo-alt"></i> Returned Products</li>
             <li class="nav-item" onclick="window.switchTab('damaged', this)"><i class="fas fa-heart-broken"></i> Damaged Products</li>
             <li class="nav-item" onclick="window.switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
         </ul>
     </div>
 
+    <!-- Main Content Area -->
     <div class="main-wrapper">
         
+        <!-- Mobile Header (Visible only on small screens) -->
         <div class="mobile-header">
-            <h2>Boris B Farms</h2>
+            <img src="logo.png" alt="Boris B's Chicken">
             <button onclick="window.toggleSidebar()"><i class="fas fa-bars"></i></button>
         </div>
 
         <div class="main-content" id="mainContent">
             
+            <!-- Dashboard Section -->
             <div id="dashboard" class="section active">
                 <h1>Overview Dashboard</h1>
                 <div class="dashboard-grid" id="mainMetrics">Loading metrics...</div>
@@ -126,24 +130,7 @@
                 <div class="chart-container"><canvas id="salesTrendChart"></canvas></div>
             </div>
 
-            <div id="sales" class="section">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1>Sales Management</h1>
-                    <button class="btn" onclick="window.openModal('addSaleModal')"><i class="fas fa-plus"></i> Record New Sale</button>
-                </div>
-                <div class="filter-bar">
-                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="salesSearchInput" onkeyup="window.filterTable('salesSearchInput', 'salesMonthFilter', 'salesBody')" placeholder="Search by Invoice, Customer, or Feed..." style="padding-left: 35px;"></div>
-                    <div style="flex: 1;"><input type="month" id="salesMonthFilter" onchange="window.filterTable('salesSearchInput', 'salesMonthFilter', 'salesBody')" title="Filter by Month"></div>
-                    <div><button class="btn btn-update" onclick="window.resetFilters('salesSearchInput', 'salesMonthFilter', 'salesBody')" style="width:100%;">Clear Filters</button></div>
-                </div>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead><tr><th>Date</th><th>Invoice #</th><th>Customer Name</th><th>Feed Type</th><th>Qty (Bags)</th><th>Total Amount (GHS)</th><th>Status</th><th>Action</th></tr></thead>
-                        <tbody id="salesBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
+            <!-- Inventory Section -->
             <div id="inventory" class="section">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h1>Inventory Management</h1>
@@ -162,6 +149,26 @@
                 </div>
             </div>
 
+            <!-- Sales Section -->
+            <div id="sales" class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1>Sales Management</h1>
+                    <button class="btn" onclick="window.openModal('addSaleModal')"><i class="fas fa-plus"></i> Record New Sale</button>
+                </div>
+                <div class="filter-bar">
+                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="salesSearchInput" onkeyup="window.filterTable('salesSearchInput', 'salesMonthFilter', 'salesBody')" placeholder="Search by Invoice, Customer, or Feed..." style="padding-left: 35px;"></div>
+                    <div style="flex: 1;"><input type="month" id="salesMonthFilter" onchange="window.filterTable('salesSearchInput', 'salesMonthFilter', 'salesBody')" title="Filter by Month"></div>
+                    <div><button class="btn btn-update" onclick="window.resetFilters('salesSearchInput', 'salesMonthFilter', 'salesBody')" style="width:100%;">Clear Filters</button></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Date</th><th>Invoice #</th><th>Customer Name</th><th>Feed Type</th><th>Qty (Bags)</th><th>Total Amount (GHS)</th><th>Status</th><th>Action</th></tr></thead>
+                        <tbody id="salesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Returned Section -->
             <div id="returned" class="section">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h1>Returned Products</h1>
@@ -180,6 +187,7 @@
                 </div>
             </div>
 
+            <!-- Damaged Section -->
             <div id="damaged" class="section">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h1>Damaged Products</h1>
@@ -198,6 +206,7 @@
                 </div>
             </div>
 
+            <!-- Reports Section -->
             <div id="reports" class="section">
                 <h1>Consolidated Monthly Report</h1>
                 <div class="card" style="flex-direction: column; align-items: flex-start; gap: 15px; margin-top: 15px; padding: 25px;">
@@ -221,7 +230,12 @@
                 </div>
             </div>
 
-        </div> </div> <div id="addSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Record New Sale</h2>
+        </div> <!-- End Main Content -->
+    </div> <!-- End Main Wrapper -->
+
+    <!-- ================= MODALS ================= -->
+    <!-- Sales Modals -->
+    <div id="addSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Record New Sale</h2>
         <form onsubmit="window.submitAddSaleForm(event)">
             <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="saleDate" required></div><div class="form-group"><label>Invoice #</label><input type="text" id="saleInvoice" required></div></div>
             <div class="form-group"><label>Customer Name</label><input type="text" id="saleCustomer" required></div><div class="form-group"><label>Feed Type</label><input type="text" id="saleType" required></div>
@@ -242,6 +256,7 @@
         <div class="form-row"><div class="form-group"><label>Qty</label><input type="text" id="viewQty" disabled></div><div class="form-group"><label>Amount</label><input type="text" id="viewAmount" disabled></div></div><div class="form-group"><label>Status</label><input type="text" id="viewStatus" disabled></div>
     </div></div>
 
+    <!-- Inventory Modals -->
     <div id="addModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Add Stock</h2>
         <form onsubmit="window.submitAddForm(event)">
             <div class="form-row"><div class="form-group"><label>Feed Type</label><input type="text" id="addType" required></div><div class="form-group"><label>Date Received</label><input type="date" id="addDate" required></div></div>
@@ -262,6 +277,7 @@
         <div class="form-row"><div class="form-group"><label>Price (GHS)</label><input type="text" id="viewInvPrice" disabled></div><div class="form-group"><label>Status</label><input type="text" id="viewInvStatus" disabled></div></div>
     </div></div>
 
+    <!-- Returned Modals -->
     <div id="addReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Log Return</h2>
         <form onsubmit="window.submitAddReturnForm(event)">
             <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="returnDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="returnQty" required></div></div>
@@ -282,6 +298,7 @@
         <div class="form-group"><label>Reason</label><input type="text" id="viewReturnReason" disabled></div><div class="form-group"><label>Condition</label><input type="text" id="viewReturnCondition" disabled></div>
     </div></div>
 
+    <!-- Damaged Modals -->
     <div id="addDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Report Damage</h2>
         <form onsubmit="window.submitAddDamageForm(event)">
             <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="damageDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="damageQty" required></div></div>
@@ -302,6 +319,7 @@
         <div class="form-group"><label>Description</label><input type="text" id="viewDamageDesc" disabled></div><div class="form-group"><label>Loss (GHS)</label><input type="text" id="viewDamageLoss" disabled></div>
     </div></div>
 
+    <!-- ================= FIREBASE & APP LOGIC ================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
