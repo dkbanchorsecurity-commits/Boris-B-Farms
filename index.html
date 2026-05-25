@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boris B Farms - Admin Portal</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary-color: #1e4620; --secondary-color: #f1c40f; --bg-color: #f4f7f6; --text-color: #333; --sidebar-hover: #2a5a2d; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-color); overflow: hidden;}
+        
+        /* Mobile Header (Hidden on Desktop) */
+        .mobile-header { display: none; background-color: var(--primary-color); color: white; padding: 15px 20px; align-items: center; justify-content: space-between; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+        .mobile-header button { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+        .mobile-header h2 { margin: 0; font-size: 20px; color: var(--secondary-color); letter-spacing: 1px;}
+        
+        /* Sidebar Styles */
+        .sidebar { width: 260px; background-color: var(--primary-color); color: white; display: flex; flex-direction: column; box-shadow: 2px 0 5px rgba(0,0,0,0.1); height: 100vh; z-index: 2000;}
+        .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1999; }
+        .brand { padding: 20px; text-align: center; background-color: #153216; border-bottom: 2px solid var(--secondary-color); }
+        .brand h2 { margin: 0; font-size: 24px; color: var(--secondary-color); letter-spacing: 1px; }
+        .brand p { margin: 5px 0 0 0; font-size: 12px; color: #ccc; }
+        .nav-links { list-style: none; padding: 0; margin: 20px 0; overflow-y: auto;}
+        .nav-item { padding: 15px 25px; cursor: pointer; display: flex; align-items: center; gap: 15px; font-size: 15px; transition: all 0.3s ease; }
+        .nav-item:hover, .nav-item.active { background-color: var(--sidebar-hover); border-left: 4px solid var(--secondary-color); }
+        .nav-item.active { font-weight: bold; color: var(--secondary-color); }
+        
+        /* Main Content Styles */
+        .main-wrapper { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; position: relative; }
+        .section { display: none; animation: fadeIn 0.4s ease-in-out; } .section.active { display: block; }
+        h1 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; font-size: 1.5rem; }
+        h2 { color: var(--primary-color); font-size: 1.2rem; margin-top: 30px; margin-bottom: 10px; }
+        
+        /* Dashboard Cards */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 15px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; align-items: flex-start; gap: 15px; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
+        .card-icon { font-size: 28px; color: var(--secondary-color); background: var(--primary-color); padding: 15px; border-radius: 8px; min-width: 28px; text-align: center; }
+        .card-info { flex: 1; } .card-info h3 { margin: 0; font-size: 13px; color: #666; } .card-info p { margin: 5px 0 0 0; font-size: 22px; font-weight: bold; color: var(--primary-color); }
+        .card-details { font-size: 12px; color: #7f8c8d; margin-top: 6px; line-height: 1.4; display: block; }
+        .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 20px; width: 100%; height: 350px; box-sizing: border-box; }
+        
+        /* Table & Filter Styles */
+        .filter-bar { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 15px; display: flex; gap: 15px; align-items: center;}
+        .filter-bar input, .filter-bar select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; width: 100%; box-sizing: border-box;}
+        
+        .table-responsive { width: 100%; overflow-x: auto; margin-top: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); background: white;}
+        .data-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 800px; }
+        .data-table th, .data-table td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+        .data-table th { background-color: var(--primary-color); color: white; } .data-table tr:hover { background-color: #f9f9f9; }
+        .status-low { color: #e74c3c; font-weight: bold; } .status-good { color: #27ae60; font-weight: bold; } .status-warning { color: #f39c12; font-weight: bold; }
+        
+        /* Buttons */
+        .btn { background-color: var(--primary-color); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 13px; white-space: nowrap;}
+        .btn:hover { background-color: var(--sidebar-hover); } .btn-update { background-color: var(--secondary-color); color: #333; font-weight: bold; }
+        .btn-danger { background-color: #e74c3c; color: white; } .btn-info { background-color: #3498db; color: white; } .btn-success { background-color: #27ae60; color: white; }
+        .btn-icon { padding: 6px 10px; font-size: 12px; } .action-group { display: flex; gap: 5px; }
+        
+        /* Modal Styles */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; justify-content: center; align-items: center; padding: 15px; box-sizing: border-box;}
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 100%; max-width: 450px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; animation: fadeIn 0.3s ease-in-out; max-height: 90vh; overflow-y: auto;}
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #888; } .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit;}
+        .form-group input[disabled] { background-color: #f4f7f6; cursor: not-allowed; color: #555; font-weight: bold;}
+        .form-row { display: flex; gap: 10px; }
+        .form-row .form-group { flex: 1; margin-bottom: 15px;}
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ================= MOBILE RESPONSIVE MEDIA QUERIES ================= */
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; left: -260px; transition: left 0.3s ease; }
+            .sidebar.show { left: 0; }
+            .mobile-header { display: flex; }
+            .main-content { padding: 15px; }
+            h1 { font-size: 1.3rem; }
+            .filter-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+            .filter-bar > div { width: 100%; }
+            .filter-bar input[type="text"] { padding-left: 35px; }
+            .form-row { flex-direction: column; gap: 0; }
+            .form-row .form-group { margin-bottom: 10px; }
+            .section > div[style*="display: flex"] { flex-direction: column; align-items: flex-start !important; gap: 10px; margin-bottom: 15px;}
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mobile-header">
+        <h2>Boris B Farms</h2>
+        <button onclick="window.toggleSidebar()"><i class="fas fa-bars"></i></button>
+    </div>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="window.toggleSidebar()"></div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="brand">
+            <h2>Boris B Farms</h2>
+            <p>Premium Poultry Feeds</p>
+        </div>
+        <ul class="nav-links">
+            <li class="nav-item active" onclick="window.switchTab('dashboard', this)"><i class="fas fa-chart-line"></i> Dashboard</li>
+            <li class="nav-item" onclick="window.switchTab('sales', this)"><i class="fas fa-cash-register"></i> Sales</li>
+            <li class="nav-item" onclick="window.switchTab('inventory', this)"><i class="fas fa-boxes"></i> Inventory Management</li>
+            <li class="nav-item" onclick="window.switchTab('returned', this)"><i class="fas fa-undo-alt"></i> Returned Products</li>
+            <li class="nav-item" onclick="window.switchTab('damaged', this)"><i class="fas fa-heart-broken"></i> Damaged Products</li>
+            <li class="nav-item" onclick="window.switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
+        </ul>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="main-content">
+            
+            <div id="dashboard" class="section active">
+                <h1>Overview Dashboard</h1>
+                <div class="dashboard-grid" id="mainMetrics">Loading metrics...</div>
+                
+                <h2 style="margin-top: 20px;">Product Quantities (In Stock)</h2>
+                <div class="dashboard-grid" id="productMetrics"></div>
+
+                <div class="chart-container"><canvas id="salesTrendChart"></canvas></div>
+            </div>
+
+            <div id="sales" class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1>Sales Management</h1>
+                    <button class="btn" onclick="window.openModal('addSaleModal')"><i class="fas fa-plus"></i> Record New Sale</button>
+                </div>
+                <div class="filter-bar">
+                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="salesSearchInput" onkeyup="window.filterTable('salesSearchInput', 'salesMonthFilter', 'salesBody')" placeholder="Search by Invoice, Customer, or Feed..." style="padding-left: 35px;"></div>
+                    <div style="flex: 1;"><input type="month" id="salesMonthFilter" onchange="window.filterTable('salesSearchInput', 'salesMonthFilter', 'salesBody')" title="Filter by Month"></div>
+                    <div><button class="btn btn-update" onclick="window.resetFilters('salesSearchInput', 'salesMonthFilter', 'salesBody')" style="width:100%;">Clear Filters</button></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Date</th><th>Invoice #</th><th>Customer Name</th><th>Feed Type</th><th>Qty (Bags)</th><th>Total Amount (GHS)</th><th>Status</th><th>Action</th></tr></thead>
+                        <tbody id="salesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="inventory" class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1>Inventory Management</h1>
+                    <button class="btn" onclick="window.openModal('addModal')"><i class="fas fa-plus"></i> Add New Stock</button>
+                </div>
+                <div class="filter-bar">
+                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="invSearchInput" onkeyup="window.filterTable('invSearchInput', 'invMonthFilter', 'inventoryBody')" placeholder="Search by Feed Type..." style="padding-left: 35px;"></div>
+                    <div style="flex: 1;"><input type="month" id="invMonthFilter" onchange="window.filterTable('invSearchInput', 'invMonthFilter', 'inventoryBody')"></div>
+                    <div><button class="btn btn-update" onclick="window.resetFilters('invSearchInput', 'invMonthFilter', 'inventoryBody')" style="width:100%;">Clear Filters</button></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table" id="inventoryTable">
+                        <thead><tr><th>Feed Type</th><th>Date Received</th><th>Weight (kg)</th><th>Qty (Bags)</th><th>Status</th><th>Unit Price (GHS)</th><th>Total Price (GHS)</th><th>Action</th></tr></thead>
+                        <tbody id="inventoryBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="returned" class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1>Returned Products</h1>
+                    <button class="btn" onclick="window.openModal('addReturnModal')"><i class="fas fa-plus"></i> Log Return</button>
+                </div>
+                <div class="filter-bar">
+                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="returnSearchInput" onkeyup="window.filterTable('returnSearchInput', 'returnMonthFilter', 'returnedBody')" placeholder="Search Customer, Feed, Reason..." style="padding-left: 35px;"></div>
+                    <div style="flex: 1;"><input type="month" id="returnMonthFilter" onchange="window.filterTable('returnSearchInput', 'returnMonthFilter', 'returnedBody')"></div>
+                    <div><button class="btn btn-update" onclick="window.resetFilters('returnSearchInput', 'returnMonthFilter', 'returnedBody')" style="width:100%;">Clear Filters</button></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Date Logged</th><th>Customer</th><th>Feed Type</th><th>Qty (Bags)</th><th>Reason for Return</th><th>Condition</th><th>Action</th></tr></thead>
+                        <tbody id="returnedBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="damaged" class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1>Damaged Products</h1>
+                    <button class="btn" onclick="window.openModal('addDamageModal')"><i class="fas fa-plus"></i> Report Damage</button>
+                </div>
+                <div class="filter-bar">
+                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="damageSearchInput" onkeyup="window.filterTable('damageSearchInput', 'damageMonthFilter', 'damagedBody')" placeholder="Search Feed, Location, Description..." style="padding-left: 35px;"></div>
+                    <div style="flex: 1;"><input type="month" id="damageMonthFilter" onchange="window.filterTable('damageSearchInput', 'damageMonthFilter', 'damagedBody')"></div>
+                    <div><button class="btn btn-update" onclick="window.resetFilters('damageSearchInput', 'damageMonthFilter', 'damagedBody')" style="width:100%;">Clear Filters</button></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Date Reported</th><th>Feed Type</th><th>Qty (Bags)</th><th>Source Location</th><th>Damage Description</th><th>Loss (GHS)</th><th>Action</th></tr></thead>
+                        <tbody id="damagedBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="reports" class="section">
+                <h1>Consolidated Monthly Report</h1>
+                <div class="card" style="flex-direction: column; align-items: flex-start; gap: 15px; margin-top: 15px; padding: 25px;">
+                    <h3 style="margin:0; color: var(--primary-color); font-size: 18px;"><i class="fas fa-calendar-alt"></i> Report Parameters</h3>
+                    <div class="form-row" style="width: 100%; margin-top: 10px; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1; margin: 0;"><label>Select Month</label><input type="month" id="reportMonthFilter"></div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-update" onclick="window.generateReportPreview()"><i class="fas fa-search"></i> Generate Report</button>
+                            <button class="btn btn-info" onclick="window.downloadReport('pdf')"><i class="fas fa-file-pdf"></i> Download PDF</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="reportPreviewArea" style="display: none; margin-top: 35px; animation: fadeIn 0.4s ease-in-out;">
+                    <h2 style="border-bottom: 2px solid var(--secondary-color); padding-bottom: 10px; color: var(--primary-color);">Report For: <span id="previewMonthTitle"></span></h2>
+                    <div class="table-responsive">
+                        <table class="data-table" style="margin-top: 20px;">
+                            <thead><tr><th>Date</th><th>Feed Type</th><th>Inventory Added (Bags)</th><th>Sold (Bags)</th><th>Damaged (Bags)</th><th>Returned (Bags)</th><th>Total Amount Sold (GHS)</th></tr></thead>
+                            <tbody id="reportPreviewBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="addSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Record New Sale</h2>
+        <form onsubmit="window.submitAddSaleForm(event)">
+            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="saleDate" required></div><div class="form-group"><label>Invoice #</label><input type="text" id="saleInvoice" required></div></div>
+            <div class="form-group"><label>Customer Name</label><input type="text" id="saleCustomer" required></div><div class="form-group"><label>Feed Type</label><input type="text" id="saleType" required></div>
+            <div class="form-row"><div class="form-group"><label>Qty (Bags)</label><input type="number" id="saleQty" required></div><div class="form-group"><label>Total (GHS)</label><input type="number" id="saleAmount" step="0.01" required></div></div>
+            <div class="form-group"><label>Status</label><select id="saleStatus"><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div><button type="submit" class="btn" style="width: 100%;">Save</button>
+        </form>
+    </div></div>
+    <div id="editSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Sale</h2>
+        <form onsubmit="window.submitEditSaleForm(event)">
+            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editSaleDate" required></div><div class="form-group"><label>Invoice #</label><input type="text" id="editSaleInvoice" required></div></div>
+            <div class="form-group"><label>Customer</label><input type="text" id="editSaleCustomer" required></div><div class="form-group"><label>Feed Type</label><input type="text" id="editSaleType" required></div>
+            <div class="form-row"><div class="form-group"><label>Qty (Bags)</label><input type="number" id="editSaleQty" required></div><div class="form-group"><label>Total (GHS)</label><input type="number" id="editSaleAmount" step="0.01" required></div></div>
+            <div class="form-group"><label>Status</label><select id="editSaleStatus"><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div><button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
+        </form>
+    </div></div>
+    <div id="viewSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Sale Details</h2>
+        <div class="form-group"><label>Invoice / Date</label><input type="text" id="viewInvoiceDate" disabled></div><div class="form-group"><label>Customer Name</label><input type="text" id="viewCustomer" disabled></div><div class="form-group"><label>Feed Type</label><input type="text" id="viewType" disabled></div>
+        <div class="form-row"><div class="form-group"><label>Qty</label><input type="text" id="viewQty" disabled></div><div class="form-group"><label>Amount</label><input type="text" id="viewAmount" disabled></div></div><div class="form-group"><label>Status</label><input type="text" id="viewStatus" disabled></div>
+    </div></div>
+
+    <div id="addModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Add Stock</h2>
+        <form onsubmit="window.submitAddForm(event)">
+            <div class="form-row"><div class="form-group"><label>Feed Type</label><input type="text" id="addType" required></div><div class="form-group"><label>Date Received</label><input type="date" id="addDate" required></div></div>
+            <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input type="number" id="addWeight" required></div><div class="form-group"><label>Quantity (Bags)</label><input type="number" id="addQty" required></div></div>
+            <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="addPrice" step="0.01" required></div><button type="submit" class="btn" style="width: 100%;">Save</button>
+        </form>
+    </div></div>
+    <div id="updateModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('updateModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Stock</h2>
+        <form onsubmit="window.submitUpdateInvForm(event)">
+            <div class="form-group"><label>Feed Type</label><input type="text" id="updType" required></div>
+            <div class="form-row"><div class="form-group"><label>Date Received</label><input type="date" id="updDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="updQty" required></div></div>
+            <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="updPrice" step="0.01" required></div><button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
+        </form>
+    </div></div>
+    <div id="viewInvModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewInvModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Stock Details</h2>
+        <div class="form-row"><div class="form-group"><label>Feed Type</label><input type="text" id="viewInvType" disabled></div><div class="form-group"><label>Date Received</label><input type="text" id="viewInvDate" disabled></div></div>
+        <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input type="text" id="viewInvWeight" disabled></div><div class="form-group"><label>Stock Level</label><input type="text" id="viewInvQty" disabled></div></div>
+        <div class="form-row"><div class="form-group"><label>Price (GHS)</label><input type="text" id="viewInvPrice" disabled></div><div class="form-group"><label>Status</label><input type="text" id="viewInvStatus" disabled></div></div>
+    </div></div>
+
+    <div id="addReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Log Return</h2>
+        <form onsubmit="window.submitAddReturnForm(event)">
+            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="returnDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="returnQty" required></div></div>
+            <div class="form-group"><label>Customer</label><input type="text" id="returnCustomer" required></div><div class="form-group"><label>Feed Type</label><input type="text" id="returnType" required></div>
+            <div class="form-group"><label>Reason</label><input type="text" id="returnReason" required></div><div class="form-group"><label>Condition</label><select id="returnCondition"><option value="Intact / Resalable">Intact / Resalable</option><option value="Damaged">Damaged</option></select></div><button type="submit" class="btn" style="width: 100%;">Save</button>
+        </form>
+    </div></div>
+    <div id="editReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Return</h2>
+        <form onsubmit="window.submitEditReturnForm(event)">
+            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editReturnDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="editReturnQty" required></div></div>
+            <div class="form-group"><label>Customer</label><input type="text" id="editReturnCustomer" required></div><div class="form-group"><label>Feed Type</label><input type="text" id="editReturnType" required></div>
+            <div class="form-group"><label>Reason</label><input type="text" id="editReturnReason" required></div><div class="form-group"><label>Condition</label><select id="editReturnCondition"><option value="Intact / Resalable">Intact / Resalable</option><option value="Damaged">Damaged</option></select></div><button type="submit" class="btn btn-update" style="width: 100%;">Save</button>
+        </form>
+    </div></div>
+    <div id="viewReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Return Details</h2>
+        <div class="form-row"><div class="form-group"><label>Date Logged</label><input type="text" id="viewReturnDate" disabled></div><div class="form-group"><label>Quantity (Bags)</label><input type="text" id="viewReturnQty" disabled></div></div>
+        <div class="form-group"><label>Customer</label><input type="text" id="viewReturnCustomer" disabled></div><div class="form-group"><label>Feed Type</label><input type="text" id="viewReturnType" disabled></div>
+        <div class="form-group"><label>Reason</label><input type="text" id="viewReturnReason" disabled></div><div class="form-group"><label>Condition</label><input type="text" id="viewReturnCondition" disabled></div>
+    </div></div>
+
+    <div id="addDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Report Damage</h2>
+        <form onsubmit="window.submitAddDamageForm(event)">
+            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="damageDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="damageQty" required></div></div>
+            <div class="form-group"><label>Feed Type</label><input type="text" id="damageType" required></div><div class="form-group"><label>Location</label><input type="text" id="damageLocation" required></div>
+            <div class="form-group"><label>Description</label><input type="text" id="damageDesc" required></div><div class="form-group"><label>Loss (GHS)</label><input type="number" id="damageLoss" step="0.01" required></div><button type="submit" class="btn btn-danger" style="width: 100%;">Save</button>
+        </form>
+    </div></div>
+    <div id="editDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Damage</h2>
+        <form onsubmit="window.submitEditDamageForm(event)">
+            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editDamageDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="editDamageQty" required></div></div>
+            <div class="form-group"><label>Feed Type</label><input type="text" id="editDamageType" required></div><div class="form-group"><label>Location</label><input type="text" id="editDamageLocation" required></div>
+            <div class="form-group"><label>Description</label><input type="text" id="editDamageDesc" required></div><div class="form-group"><label>Loss (GHS)</label><input type="number" id="editDamageLoss" step="0.01" required></div><button type="submit" class="btn btn-update" style="width: 100%;">Save</button>
+        </form>
+    </div></div>
+    <div id="viewDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Damage Details</h2>
+        <div class="form-row"><div class="form-group"><label>Date</label><input type="text" id="viewDamageDate" disabled></div><div class="form-group"><label>Qty</label><input type="text" id="viewDamageQty" disabled></div></div>
+        <div class="form-group"><label>Feed Type</label><input type="text" id="viewDamageType" disabled></div><div class="form-group"><label>Location</label><input type="text" id="viewDamageLocation" disabled></div>
+        <div class="form-group"><label>Description</label><input type="text" id="viewDamageDesc" disabled></div><div class="form-group"><label>Loss (GHS)</label><input type="text" id="viewDamageLoss" disabled></div>
+    </div></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD0Tya77ZTWkuKoGmFJCDJqA1xnWoibxG8",
+            authDomain: "boris-b.firebaseapp.com",
+            projectId: "boris-b",
+            storageBucket: "boris-b.firebasestorage.app",
+            messagingSenderId: "346605678047",
+            appId: "1:346605678047:web:8276dee115966fa246e86a",
+            measurementId: "G-LK41VQDCWD"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let dataState = { inventory: [], sales: [], returns: [], damages: [] };
+        let activeEditId = null;
+
+        // Mobile UI Helpers
+        window.toggleSidebar = () => {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('show');
+            overlay.style.display = sidebar.classList.contains('show') ? 'block' : 'none';
+        };
+
+        window.switchTab = (sectionId, clickedElement) => {
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            clickedElement.classList.add('active');
+            if(window.innerWidth <= 768) window.toggleSidebar();
+        };
+
+        window.openModal = (id) => document.getElementById(id).style.display = 'flex';
+        window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; activeEditId = null; };
+        window.onclick = (e) => { if (e.target.classList.contains('modal-overlay')) { e.target.style.display = "none"; activeEditId = null;} };
+
+        window.filterTable = (searchId, monthId, tbodyId) => {
+            const searchVal = document.getElementById(searchId).value.toLowerCase(); 
+            const monthVal = document.getElementById(monthId).value; 
+            const rows = document.querySelectorAll(`#${tbodyId} tr`);
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                const date = row.cells[0].innerText; 
+                const matchesSearch = text.includes(searchVal);
+                const matchesMonth = monthVal ? date.startsWith(monthVal) : true;
+                row.style.display = (matchesSearch && matchesMonth) ? '' : 'none';
+            });
+        };
+        window.resetFilters = (searchId, monthId, tbodyId) => {
+            document.getElementById(searchId).value = ''; document.getElementById(monthId).value = ''; window.filterTable(searchId, monthId, tbodyId);
+        };
+
+        let salesTrendChartInstance = null;
+        function updateDashboard() {
+            let totalBags = 0, lowStockAlerts = 0, lowStockList = [];
+            let productCardsHTML = '';
+            let productStats = {}; 
+
+            dataState.inventory.forEach(item => {
+                totalBags += item.qty;
+                if (item.qty < 50) { lowStockAlerts++; lowStockList.push(`${item.type} (${item.qty})`); }
+                if(!productStats[item.type]) productStats[item.type] = { inStock: 0, sold: 0 };
+                productStats[item.type].inStock += item.qty;
+
+                const iconColor = item.qty < 50 ? '#e74c3c' : 'var(--secondary-color)';
+                const bgColor = item.qty < 50 ? '#fceceb' : 'var(--primary-color)';
+                productCardsHTML += `<div class="card"><i class="fas fa-box card-icon" style="color: ${iconColor}; background: ${bgColor};"></i><div class="card-info"><h3>${item.type}</h3><p>${item.qty} bags</p></div></div>`;
+            });
+
+            dataState.sales.forEach(item => {
+                if(!productStats[item.type]) productStats[item.type] = { inStock: 0, sold: 0 };
+                productStats[item.type].sold += item.qty;
+            });
+
+            let totalReturned = 0, returnedTypes = {};
+            dataState.returns.forEach(item => {
+                totalReturned += item.qty;
+                returnedTypes[item.type] = (returnedTypes[item.type] || 0) + item.qty;
+            });
+
+            let totalDamaged = 0, damagedTypes = {};
+            dataState.damages.forEach(item => {
+                totalDamaged += item.qty;
+                damagedTypes[item.type] = (damagedTypes[item.type] || 0) + item.qty;
+            });
+
+            const lowStockDetails = lowStockList.length > 0 ? lowStockList.join(', ') : 'All stocks healthy';
+            const retDetails = totalReturned > 0 ? Object.entries(returnedTypes).map(([t, q]) => `${t} (${q})`).join(', ') : 'No returns';
+            const damDetails = totalDamaged > 0 ? Object.entries(damagedTypes).map(([t, q]) => `${t} (${q})`).join(', ') : 'No damages';
+
+            document.getElementById('mainMetrics').innerHTML = `
+                <div class="card"><i class="fas fa-sack-dollar card-icon"></i><div class="card-info"><h3>Total Feed in Stock</h3><p>${totalBags.toLocaleString()} bags</p></div></div>
+                <div class="card"><i class="fas fa-exclamation-triangle card-icon" style="color: #e74c3c; background: #fceceb;"></i><div class="card-info"><h3>Low Stock Alerts</h3><p>${lowStockAlerts} Types</p><span class="card-details" style="color:#e74c3c;">${lowStockDetails}</span></div></div>
+                <div class="card"><i class="fas fa-undo-alt card-icon" style="color: #3498db; background: #eaf2f8;"></i><div class="card-info"><h3>Returned Products</h3><p>${totalReturned.toLocaleString()} bags</p><span class="card-details">${retDetails}</span></div></div>
+                <div class="card"><i class="fas fa-heart-broken card-icon" style="color: #e74c3c; background: #fceceb;"></i><div class="card-info"><h3>Damaged Products</h3><p>${totalDamaged.toLocaleString()} bags</p><span class="card-details">${damDetails}</span></div></div>
+            `;
+            document.getElementById('productMetrics').innerHTML = productCardsHTML;
+
+            const ctx = document.getElementById('salesTrendChart').getContext('2d');
+            const labels = Object.keys(productStats);
+            if (salesTrendChartInstance) salesTrendChartInstance.destroy();
+            salesTrendChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Total Sold', data: labels.map(l => productStats[l].sold), backgroundColor: '#27ae60', borderRadius: 4 },
+                        { label: 'In Stock', data: labels.map(l => productStats[l].inStock), backgroundColor: '#f1c40f', borderRadius: 4 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Performance: Sold vs In Stock' } } }
+            });
+        }
+
+        onSnapshot(collection(db, "inventory"), (snapshot) => {
+            dataState.inventory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            document.getElementById('inventoryBody').innerHTML = dataState.inventory.map(item => {
+                const totalValue = (item.qty * item.price).toLocaleString('en-US', {minimumFractionDigits: 2});
+                return `<tr><td>${item.type}</td><td>${item.date}</td><td>${item.weight}</td><td>${item.qty} bags</td><td class="${item.qty < 50 ? 'status-low' : 'status-good'}">${item.qty < 50 ? 'Low Stock' : 'Healthy'}</td><td>${item.price.toFixed(2)}</td><td>${totalValue}</td><td><div class="action-group"><button class="btn btn-icon btn-update" onclick="window.editInventory('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('inventory', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
+            }).join(''); updateDashboard();
+        });
+
+        onSnapshot(collection(db, "sales"), (snapshot) => {
+            dataState.sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            document.getElementById('salesBody').innerHTML = dataState.sales.map(item => `<tr><td>${item.date}</td><td>${item.invoice}</td><td>${item.customer}</td><td>${item.type}</td><td>${item.qty}</td><td>${item.amount.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td class="${item.status === 'Paid' ? 'status-good' : 'status-warning'}">${item.status}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewSale('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editSale('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('sales', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`).join(''); updateDashboard();
+        });
+
+        onSnapshot(collection(db, "returned"), (snapshot) => {
+            dataState.returns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            document.getElementById('returnedBody').innerHTML = dataState.returns.map(item => `<tr><td>${item.date}</td><td>${item.customer}</td><td>${item.type}</td><td>${item.qty}</td><td>${item.reason}</td><td class="${item.condition.includes('Damaged') ? 'status-low' : 'status-good'}">${item.condition}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewReturn('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editReturn('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('returned', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`).join(''); updateDashboard();
+        });
+
+        onSnapshot(collection(db, "damaged"), (snapshot) => {
+            dataState.damages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            document.getElementById('damagedBody').innerHTML = dataState.damages.map(item => `<tr><td>${item.date}</td><td>${item.type}</td><td>${item.qty}</td><td>${item.location}</td><td>${item.desc}</td><td>${item.loss.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewDamage('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editDamage('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('damaged', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`).join(''); updateDashboard();
+        });
+
+        window.deleteRecord = async (colName, id) => { if (confirm(`Delete this record from ${colName}?`)) await deleteDoc(doc(db, colName, id)); };
+
+        // INVENTORY CRUD
+        window.submitAddForm = async (e) => {
+            e.preventDefault();
+            await addDoc(collection(db, "inventory"), { type: document.getElementById('addType').value, date: document.getElementById('addDate').value, weight: parseInt(document.getElementById('addWeight').value), qty: parseInt(document.getElementById('addQty').value), price: parseFloat(document.getElementById('addPrice').value) });
+            window.closeModal('addModal'); e.target.reset();
+        };
+        window.editInventory = (id) => {
+            activeEditId = id; const item = dataState.inventory.find(i => i.id === id);
+            document.getElementById('updType').value = item.type; document.getElementById('updDate').value = item.date; document.getElementById('updQty').value = item.qty; document.getElementById('updPrice').value = item.price; window.openModal('updateModal');
+        };
+        window.submitUpdateInvForm = async (e) => {
+            e.preventDefault();
+            await updateDoc(doc(db, "inventory", activeEditId), { type: document.getElementById('updType').value, date: document.getElementById('updDate').value, qty: parseInt(document.getElementById('updQty').value), price: parseFloat(document.getElementById('updPrice').value) });
+            window.closeModal('updateModal');
+        };
+
+        // SALES CRUD
+        window.submitAddSaleForm = async (e) => {
+            e.preventDefault();
+            await addDoc(collection(db, "sales"), { date: document.getElementById('saleDate').value, invoice: document.getElementById('saleInvoice').value, customer: document.getElementById('saleCustomer').value, type: document.getElementById('saleType').value, qty: parseInt(document.getElementById('saleQty').value), amount: parseFloat(document.getElementById('saleAmount').value), status: document.getElementById('saleStatus').value });
+            window.closeModal('addSaleModal'); e.target.reset();
+        };
+        window.viewSale = (id) => {
+            const item = dataState.sales.find(i => i.id === id);
+            document.getElementById('viewInvoiceDate').value = `${item.invoice} (Logged: ${item.date})`; document.getElementById('viewCustomer').value = item.customer; document.getElementById('viewType').value = item.type; document.getElementById('viewQty').value = item.qty; document.getElementById('viewAmount').value = item.amount; document.getElementById('viewStatus').value = item.status; window.openModal('viewSaleModal');
+        };
+        window.editSale = (id) => {
+            activeEditId = id; const item = dataState.sales.find(i => i.id === id);
+            document.getElementById('editSaleDate').value = item.date; document.getElementById('editSaleInvoice').value = item.invoice; document.getElementById('editSaleCustomer').value = item.customer; document.getElementById('editSaleType').value = item.type; document.getElementById('editSaleQty').value = item.qty; document.getElementById('editSaleAmount').value = item.amount; document.getElementById('editSaleStatus').value = item.status; window.openModal('editSaleModal');
+        };
+        window.submitEditSaleForm = async (e) => {
+            e.preventDefault();
+            await updateDoc(doc(db, "sales", activeEditId), { date: document.getElementById('editSaleDate').value, invoice: document.getElementById('editSaleInvoice').value, customer: document.getElementById('editSaleCustomer').value, type: document.getElementById('editSaleType').value, qty: parseInt(document.getElementById('editSaleQty').value), amount: parseFloat(document.getElementById('editSaleAmount').value), status: document.getElementById('editSaleStatus').value });
+            window.closeModal('editSaleModal');
+        };
+
+        // RETURN CRUD
+        window.submitAddReturnForm = async (e) => {
+            e.preventDefault();
+            await addDoc(collection(db, "returned"), { date: document.getElementById('returnDate').value, qty: parseInt(document.getElementById('returnQty').value), customer: document.getElementById('returnCustomer').value, type: document.getElementById('returnType').value, reason: document.getElementById('returnReason').value, condition: document.getElementById('returnCondition').value });
+            window.closeModal('addReturnModal'); e.target.reset();
+        };
+        window.viewReturn = (id) => {
+            const item = dataState.returns.find(i => i.id === id);
+            document.getElementById('viewReturnDate').value = item.date; document.getElementById('viewReturnCustomer').value = item.customer; document.getElementById('viewReturnType').value = item.type; document.getElementById('viewReturnQty').value = item.qty; document.getElementById('viewReturnReason').value = item.reason; document.getElementById('viewReturnCondition').value = item.condition; window.openModal('viewReturnModal');
+        };
+        window.editReturn = (id) => {
+            activeEditId = id; const item = dataState.returns.find(i => i.id === id);
+            document.getElementById('editReturnDate').value = item.date; document.getElementById('editReturnQty').value = item.qty; document.getElementById('editReturnCustomer').value = item.customer; document.getElementById('editReturnType').value = item.type; document.getElementById('editReturnReason').value = item.reason; document.getElementById('editReturnCondition').value = item.condition.includes('Damaged') ? 'Damaged' : 'Intact / Resalable'; window.openModal('editReturnModal');
+        };
+        window.submitEditReturnForm = async (e) => {
+            e.preventDefault();
+            await updateDoc(doc(db, "returned", activeEditId), { date: document.getElementById('editReturnDate').value, qty: parseInt(document.getElementById('editReturnQty').value), customer: document.getElementById('editReturnCustomer').value, type: document.getElementById('editReturnType').value, reason: document.getElementById('editReturnReason').value, condition: document.getElementById('editReturnCondition').value });
+            window.closeModal('editReturnModal');
+        };
+
+        // DAMAGE CRUD
+        window.submitAddDamageForm = async (e) => {
+            e.preventDefault();
+            await addDoc(collection(db, "damaged"), { date: document.getElementById('damageDate').value, qty: parseInt(document.getElementById('damageQty').value), type: document.getElementById('damageType').value, location: document.getElementById('damageLocation').value, desc: document.getElementById('damageDesc').value, loss: parseFloat(document.getElementById('damageLoss').value) });
+            window.closeModal('addDamageModal'); e.target.reset();
+        };
+        window.viewDamage = (id) => {
+            const item = dataState.damages.find(i => i.id === id);
+            document.getElementById('viewDamageDate').value = item.date; document.getElementById('viewDamageType').value = item.type; document.getElementById('viewDamageQty').value = item.qty; document.getElementById('viewDamageLocation').value = item.location; document.getElementById('viewDamageDesc').value = item.desc; document.getElementById('viewDamageLoss').value = item.loss; window.openModal('viewDamageModal');
+        };
+        window.editDamage = (id) => {
+            activeEditId = id; const item = dataState.damages.find(i => i.id === id);
+            document.getElementById('editDamageDate').value = item.date; document.getElementById('editDamageQty').value = item.qty; document.getElementById('editDamageType').value = item.type; document.getElementById('editDamageLocation').value = item.location; document.getElementById('editDamageDesc').value = item.desc; document.getElementById('editDamageLoss').value = item.loss; window.openModal('editDamageModal');
+        };
+        window.submitEditDamageForm = async (e) => {
+            e.preventDefault();
+            await updateDoc(doc(db, "damaged", activeEditId), { date: document.getElementById('editDamageDate').value, qty: parseInt(document.getElementById('editDamageQty').value), type: document.getElementById('editDamageType').value, location: document.getElementById('editDamageLocation').value, desc: document.getElementById('editDamageDesc').value, loss: parseFloat(document.getElementById('editDamageLoss').value) });
+            window.closeModal('editDamageModal');
+        };
+
+        // REPORTS
+        window.generateReportPreview = () => {
+            const monthVal = document.getElementById('reportMonthFilter').value;
+            if (!monthVal) { alert("Select a month."); return; }
+            const prettyMonth = new Date(monthVal + "-01").toLocaleString('default', { month: 'long', year: 'numeric' });
+            document.getElementById('previewMonthTitle').innerText = prettyMonth;
+
+            let reportDict = {};
+            const getRow = (d, t) => { const k = `${d}_${t}`; if(!reportDict[k]) reportDict[k] = {date:d, type:t, inv:0, sold:0, ret:0, dam:0, amt:0}; return reportDict[k]; };
+
+            dataState.inventory.filter(i => i.date.startsWith(monthVal)).forEach(i => getRow(i.date, i.type).inv += i.qty);
+            dataState.sales.filter(i => i.date.startsWith(monthVal)).forEach(i => { let r = getRow(i.date, i.type); r.sold += i.qty; r.amt += i.amount; });
+            dataState.returns.filter(i => i.date.startsWith(monthVal)).forEach(i => getRow(i.date, i.type).ret += i.qty);
+            dataState.damages.filter(i => i.date.startsWith(monthVal)).forEach(i => getRow(i.date, i.type).dam += i.qty);
+
+            let html = '', tInv=0, tSold=0, tRet=0, tDam=0, tAmt=0;
+            const rows = Object.values(reportDict).sort((a, b) => a.date.localeCompare(b.date));
+
+            if (rows.length === 0) html = `<tr><td colspan="7" style="text-align:center; padding:20px;">No data for ${prettyMonth}</td></tr>`;
+            else {
+                rows.forEach(r => {
+                    tInv+=r.inv; tSold+=r.sold; tRet+=r.ret; tDam+=r.dam; tAmt+=r.amt;
+                    html += `<tr><td>${r.date}</td><td>${r.type}</td><td>${r.inv||'-'}</td><td>${r.sold||'-'}</td><td style="color:#e74c3c;">${r.dam||'-'}</td><td style="color:#3498db;">${r.ret||'-'}</td><td>${r.amt ? r.amt.toLocaleString(undefined, {minimumFractionDigits:2}) : '-'}</td></tr>`;
+                });
+                html += `<tr style="background:var(--primary-color);color:white;font-weight:bold;"><td colspan="2" align="right">TOTALS:</td><td>${tInv}</td><td>${tSold}</td><td>${tDam}</td><td>${tRet}</td><td>GHS ${tAmt.toLocaleString(undefined, {minimumFractionDigits:2})}</td></tr>`;
+            }
+            document.getElementById('reportPreviewBody').innerHTML = html; document.getElementById('reportPreviewArea').style.display = 'block';
+        };
+
+        window.downloadReport = (fmt) => alert(`Downloading ${document.getElementById('previewMonthTitle').innerText} in ${fmt.toUpperCase()} format...`);
+    </script>
+</body>
+</html>
