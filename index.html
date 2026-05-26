@@ -49,10 +49,11 @@
         .filter-bar { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 15px; display: flex; gap: 15px; align-items: center;}
         .filter-bar input, .filter-bar select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; width: 100%; box-sizing: border-box;}
         
-        .table-responsive { width: 100%; overflow-x: auto; margin-top: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); background: white;}
+        .table-responsive { width: 100%; max-height: 500px; overflow-x: auto; overflow-y: auto; margin-top: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); background: white;}
         .data-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 800px; }
         .data-table th, .data-table td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
-        .data-table th { background-color: var(--primary-color); color: white; } .data-table tr:hover { background-color: #f9f9f9; }
+        .data-table th { background-color: var(--primary-color); color: white; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 2px rgba(0,0,0,0.1); } 
+        .data-table tr:hover { background-color: #f9f9f9; }
         .status-low { color: #e74c3c; font-weight: bold; } .status-good { color: #27ae60; font-weight: bold; } .status-warning { color: #f39c12; font-weight: bold; }
         
         /* Buttons */
@@ -87,33 +88,30 @@
             .form-row { flex-direction: column; gap: 0; }
             .form-row .form-group { margin-bottom: 10px; }
             .section > div[style*="display: flex"] { flex-direction: column; align-items: flex-start !important; gap: 10px; margin-bottom: 15px;}
+            .table-responsive { max-height: 60vh; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Sidebar Overlay (Mobile only) -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="window.toggleSidebar()"></div>
 
-    <!-- Sidebar Navigation -->
     <div class="sidebar" id="sidebar">
         <div class="brand">
             <img src="logo.png" alt="Boris B Farms">
         </div>
         <ul class="nav-links">
-            <li class="nav-item active" onclick="window.switchTab('dashboard', this)"><i class="fas fa-chart-line"></i> Dashboard</li>
-            <li class="nav-item" onclick="window.switchTab('inventory', this)"><i class="fas fa-boxes"></i> Inventory Management</li>
-            <li class="nav-item" onclick="window.switchTab('sales', this)"><i class="fas fa-cash-register"></i> Sales Management</li>
-            <li class="nav-item" onclick="window.switchTab('returned', this)"><i class="fas fa-undo-alt"></i> Returned Products</li>
-            <li class="nav-item" onclick="window.switchTab('damaged', this)"><i class="fas fa-heart-broken"></i> Damaged Products</li>
-            <li class="nav-item" onclick="window.switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
+            <li class="nav-item active" data-target="dashboard" onclick="window.switchTab('dashboard', this)"><i class="fas fa-chart-line"></i> Dashboard</li>
+            <li class="nav-item" data-target="inventory" onclick="window.switchTab('inventory', this)"><i class="fas fa-boxes"></i> Inventory Management</li>
+            <li class="nav-item" data-target="sales" onclick="window.switchTab('sales', this)"><i class="fas fa-cash-register"></i> Sales Management</li>
+            <li class="nav-item" data-target="returned" onclick="window.switchTab('returned', this)"><i class="fas fa-undo-alt"></i> Returned Products</li>
+            <li class="nav-item" data-target="damaged" onclick="window.switchTab('damaged', this)"><i class="fas fa-heart-broken"></i> Damaged Products</li>
+            <li class="nav-item" data-target="reports" onclick="window.switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
         </ul>
     </div>
 
-    <!-- Main Content Area -->
     <div class="main-wrapper">
         
-        <!-- Mobile Header (Visible only on small screens) -->
         <div class="mobile-header">
             <img src="logo.png" alt="Boris B Farms">
             <button onclick="window.toggleSidebar()"><i class="fas fa-bars"></i></button>
@@ -121,7 +119,6 @@
 
         <div class="main-content" id="mainContent">
             
-            <!-- Dashboard Section -->
             <div id="dashboard" class="section active">
                 <h1>Overview Dashboard</h1>
                 <div class="dashboard-grid" id="mainMetrics">
@@ -134,7 +131,6 @@
                 <div class="chart-container"><canvas id="salesTrendChart"></canvas></div>
             </div>
 
-            <!-- Inventory Section -->
             <div id="inventory" class="section">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h1>Inventory Management</h1>
@@ -153,7 +149,6 @@
                 </div>
             </div>
 
-            <!-- Sales Section -->
             <div id="sales" class="section">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h1>Sales Management</h1>
@@ -172,7 +167,6 @@
                 </div>
             </div>
 
-            <!-- Returned Section -->
             <div id="returned" class="section">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h1>Returned Products</h1>
@@ -191,7 +185,6 @@
                 </div>
             </div>
 
-            <!-- Damaged Section -->
             <div id="damaged" class="section">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h1>Damaged Products</h1>
@@ -210,7 +203,6 @@
                 </div>
             </div>
 
-            <!-- Reports Section -->
             <div id="reports" class="section">
                 <h1>Consolidated Monthly Report</h1>
                 <div class="card" style="flex-direction: column; align-items: flex-start; gap: 15px; margin-top: 15px; padding: 25px;">
@@ -227,22 +219,24 @@
                     <h2 style="border-bottom: 2px solid var(--secondary-color); padding-bottom: 10px; color: var(--primary-color);">Report For: <span id="previewMonthTitle"></span></h2>
                     <div class="table-responsive">
                         <table class="data-table" style="margin-top: 20px;">
-                            <thead><tr><th>Date</th><th>Feed Type</th><th>Inventory Added (Bags)</th><th>Sold (Bags)</th><th>Damaged (Bags)</th><th>Returned (Bags)</th><th>Total Amount Sold (GHS)</th></tr></thead>
+                            <thead><tr>
+                                <th>Date</th>
+                                <th>Feed Type</th>
+                                <th>Inventory Added (Bags)</th>
+                                <th>Sold (Bags)</th>
+                                <th>Damaged (Bags)</th>
+                                <th>Returned (Bags)</th>
+                                <th>Quantity Remain</th>
+                                <th>Total Amount Sold (GHS)</th>
+                            </tr></thead>
                             <tbody id="reportPreviewBody"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-        </div> <!-- End Main Content -->
-    </div> <!-- End Main Wrapper -->
+        </div> </div> <datalist id="feedTypeList"></datalist>
 
-    <!-- ================= MODALS ================= -->
-    
-    <!-- Centralized Datalist for Inventory Add/Edit to prevent typos while allowing new product types -->
-    <datalist id="feedTypeList"></datalist>
-
-    <!-- Sales Modals -->
     <div id="addSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Record New Sale</h2>
         <form onsubmit="window.submitAddSaleForm(event)">
             <div class="form-row">
@@ -250,7 +244,6 @@
                 <div class="form-group"><label>Invoice #</label><input type="text" id="saleInvoice" required></div>
             </div>
             <div class="form-group"><label>Customer Name</label><input type="text" id="saleCustomer" required></div>
-            <!-- Dynamic Select Dropdown -->
             <div class="form-group"><label>Feed Type</label><select id="saleType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
             <div class="form-row">
                 <div class="form-group"><label>Qty (Bags)</label><input type="number" id="saleQty" required oninput="window.calcSaleTotal('saleQty', 'saleUnitPrice', 'saleAmount')"></div>
@@ -271,7 +264,6 @@
                 <div class="form-group"><label>Invoice #</label><input type="text" id="editSaleInvoice" required></div>
             </div>
             <div class="form-group"><label>Customer</label><input type="text" id="editSaleCustomer" required></div>
-            <!-- Dynamic Select Dropdown -->
             <div class="form-group"><label>Feed Type</label><select id="editSaleType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
             <div class="form-row">
                 <div class="form-group"><label>Qty (Bags)</label><input type="number" id="editSaleQty" required oninput="window.calcSaleTotal('editSaleQty', 'editSaleUnitPrice', 'editSaleAmount')"></div>
@@ -299,10 +291,8 @@
         </div>
     </div></div>
 
-    <!-- Inventory Modals -->
     <div id="addModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Add Stock</h2>
         <form onsubmit="window.submitAddForm(event)">
-            <!-- Uses Datalist -->
             <div class="form-row"><div class="form-group"><label>Feed Type</label><input type="text" id="addType" list="feedTypeList" autocomplete="off" required></div><div class="form-group"><label>Date Received</label><input type="date" id="addDate" required></div></div>
             <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input type="number" id="addWeight" required></div><div class="form-group"><label>Quantity (Bags)</label><input type="number" id="addQty" required></div></div>
             <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="addPrice" step="0.01" required></div><button type="submit" class="btn" style="width: 100%;">Save</button>
@@ -310,7 +300,6 @@
     </div></div>
     <div id="updateModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('updateModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Stock</h2>
         <form onsubmit="window.submitUpdateInvForm(event)">
-            <!-- Uses Datalist -->
             <div class="form-group"><label>Feed Type</label><input type="text" id="updType" list="feedTypeList" autocomplete="off" required></div>
             <div class="form-row"><div class="form-group"><label>Date Received</label><input type="date" id="updDate" required></div><div class="form-group"><label>Quantity Added</label><input type="number" id="updQty" required></div></div>
             <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="updPrice" step="0.01" required></div><button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
@@ -322,12 +311,10 @@
         <div class="form-row"><div class="form-group"><label>Price (GHS)</label><input type="text" id="viewInvPrice" disabled></div><div class="form-group"><label>Status</label><input type="text" id="viewInvStatus" disabled></div></div>
     </div></div>
 
-    <!-- Returned Modals -->
     <div id="addReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Log Return</h2>
         <form onsubmit="window.submitAddReturnForm(event)">
             <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="returnDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="returnQty" required></div></div>
             <div class="form-group"><label>Customer</label><input type="text" id="returnCustomer" required></div>
-            <!-- Dynamic Select Dropdown -->
             <div class="form-group"><label>Feed Type</label><select id="returnType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
             <div class="form-group"><label>Reason</label><input type="text" id="returnReason" required></div><div class="form-group"><label>Condition</label><select id="returnCondition"><option value="Intact / Resalable">Intact / Resalable</option><option value="Damaged">Damaged</option></select></div><button type="submit" class="btn" style="width: 100%;">Save</button>
         </form>
@@ -336,7 +323,6 @@
         <form onsubmit="window.submitEditReturnForm(event)">
             <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editReturnDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="editReturnQty" required></div></div>
             <div class="form-group"><label>Customer</label><input type="text" id="editReturnCustomer" required></div>
-            <!-- Dynamic Select Dropdown -->
             <div class="form-group"><label>Feed Type</label><select id="editReturnType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
             <div class="form-group"><label>Reason</label><input type="text" id="editReturnReason" required></div><div class="form-group"><label>Condition</label><select id="editReturnCondition"><option value="Intact / Resalable">Intact / Resalable</option><option value="Damaged">Damaged</option></select></div><button type="submit" class="btn btn-update" style="width: 100%;">Save</button>
         </form>
@@ -347,11 +333,9 @@
         <div class="form-group"><label>Reason</label><input type="text" id="viewReturnReason" disabled></div><div class="form-group"><label>Condition</label><input type="text" id="viewReturnCondition" disabled></div>
     </div></div>
 
-    <!-- Damaged Modals -->
     <div id="addDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Report Damage</h2>
         <form onsubmit="window.submitAddDamageForm(event)">
             <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="damageDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="damageQty" required></div></div>
-            <!-- Dynamic Select Dropdown -->
             <div class="form-group"><label>Feed Type</label><select id="damageType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
             <div class="form-group"><label>Location</label><input type="text" id="damageLocation" required></div>
             <div class="form-group"><label>Description</label><input type="text" id="damageDesc" required></div><div class="form-group"><label>Loss (GHS)</label><input type="number" id="damageLoss" step="0.01" required></div><button type="submit" class="btn btn-danger" style="width: 100%;">Save</button>
@@ -360,7 +344,6 @@
     <div id="editDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Damage</h2>
         <form onsubmit="window.submitEditDamageForm(event)">
             <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editDamageDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="editDamageQty" required></div></div>
-            <!-- Dynamic Select Dropdown -->
             <div class="form-group"><label>Feed Type</label><select id="editDamageType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
             <div class="form-group"><label>Location</label><input type="text" id="editDamageLocation" required></div>
             <div class="form-group"><label>Description</label><input type="text" id="editDamageDesc" required></div><div class="form-group"><label>Loss (GHS)</label><input type="number" id="editDamageLoss" step="0.01" required></div><button type="submit" class="btn btn-update" style="width: 100%;">Save</button>
@@ -372,7 +355,6 @@
         <div class="form-group"><label>Description</label><input type="text" id="viewDamageDesc" disabled></div><div class="form-group"><label>Loss (GHS)</label><input type="text" id="viewDamageLoss" disabled></div>
     </div></div>
 
-    <!-- ================= FIREBASE & APP LOGIC ================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -392,6 +374,46 @@
         let dataState = { inventory: [], sales: [], returns: [], damages: [] };
         let activeEditId = null;
 
+        // Routing & History Logic
+        window.switchTab = (sectionId, clickedElement) => {
+            history.pushState(null, null, `#${sectionId}`);
+            activateTab(sectionId, clickedElement);
+        };
+
+        function activateTab(sectionId, clickedElement = null) {
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) targetSection.classList.add('active');
+            
+            if (!clickedElement) {
+                clickedElement = document.querySelector(`.nav-item[data-target="${sectionId}"]`);
+            }
+            if (clickedElement) clickedElement.classList.add('active');
+            
+            if(window.innerWidth <= 768) {
+                const sidebar = document.getElementById('sidebar');
+                if(sidebar.classList.contains('show')) window.toggleSidebar();
+            }
+        }
+
+        window.addEventListener('popstate', () => {
+            let hash = window.location.hash.substring(1);
+            if (!hash || !document.getElementById(hash)) {
+                hash = 'dashboard';
+            }
+            activateTab(hash);
+        });
+
+        window.addEventListener('load', () => {
+            let hash = window.location.hash.substring(1);
+            if (hash && document.getElementById(hash)) {
+                activateTab(hash);
+            }
+        });
+
+
         window.toggleSidebar = () => {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -399,19 +421,10 @@
             overlay.classList.toggle('show');
         };
 
-        window.switchTab = (sectionId, clickedElement) => {
-            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            document.getElementById(sectionId).classList.add('active');
-            clickedElement.classList.add('active');
-            if(window.innerWidth <= 768) window.toggleSidebar();
-        };
-
         window.openModal = (id) => document.getElementById(id).style.display = 'flex';
         window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; activeEditId = null; };
         window.onclick = (e) => { if (e.target.classList.contains('modal-overlay')) { e.target.style.display = "none"; activeEditId = null;} };
 
-        // Auto-calculate Total in Sales forms
         window.calcSaleTotal = (qtyId, priceId, totalId) => {
             const qty = parseFloat(document.getElementById(qtyId).value) || 0;
             const price = parseFloat(document.getElementById(priceId).value) || 0;
@@ -434,27 +447,23 @@
             document.getElementById(searchId).value = ''; document.getElementById(monthId).value = ''; window.filterTable(searchId, monthId, tbodyId);
         };
 
-        // NEW: Function to dynamically populate all Feed Type dropdowns based on Inventory
         window.updateProductDropdowns = () => {
             const uniqueTypes = [...new Set(dataState.inventory.map(item => item.type).filter(Boolean))];
             
-            // 1. Update strict dropdowns (Sales, Returns, Damages)
             const selectOptionsHTML = '<option value="" disabled selected>Select Feed Type...</option>' + uniqueTypes.map(type => `<option value="${type}">${type}</option>`).join('');
             const dropdownIds = ['saleType', 'editSaleType', 'returnType', 'editReturnType', 'damageType', 'editDamageType'];
             
             dropdownIds.forEach(id => {
                 const el = document.getElementById(id);
                 if(el) {
-                    const currentVal = el.value; // Remember what user had selected
+                    const currentVal = el.value; 
                     el.innerHTML = selectOptionsHTML;
-                    // Restore selection if it still exists in the new list
                     if(currentVal && uniqueTypes.includes(currentVal)) {
                         el.value = currentVal;
                     }
                 }
             });
 
-            // 2. Update the Datalist (Inventory - auto-completes to prevent typos, but allows new products)
             const datalistOptionsHTML = uniqueTypes.map(type => `<option value="${type}">`).join('');
             const datalist = document.getElementById('feedTypeList');
             if(datalist) datalist.innerHTML = datalistOptionsHTML;
@@ -465,7 +474,6 @@
         function updateDashboard() {
             let productStats = {}; 
 
-            // Step A: Calculate all raw inventory added
             dataState.inventory.forEach(item => {
                 const type = item.type || 'Unknown';
                 const qty = Number(item.qty || 0);
@@ -473,7 +481,6 @@
                 productStats[type].added += qty;
             });
 
-            // Step B: Calculate total sales
             let totalSalesRevenue = 0;
             let totalBagsSold = 0;
             dataState.sales.forEach(item => {
@@ -486,7 +493,6 @@
                 productStats[type].sold += qty;
             });
 
-            // Step C: Calculate total returns
             let totalReturned = 0, returnedTypes = {};
             dataState.returns.forEach(item => {
                 const type = item.type || 'Unknown';
@@ -497,7 +503,6 @@
                 productStats[type].returned += qty;
             });
 
-            // Step D: Calculate total damages
             let totalDamaged = 0, damagedTypes = {};
             dataState.damages.forEach(item => {
                 const type = item.type || 'Unknown';
@@ -508,14 +513,12 @@
                 productStats[type].damaged += qty;
             });
 
-            // Step E: Calculate CURRENT true stock levels & populate the cards
             let totalCurrentStock = 0, lowStockAlerts = 0, lowStockList = [];
             let productCardsHTML = '';
 
             Object.keys(productStats).forEach(type => {
                 const stats = productStats[type];
                 
-                // TRUE STOCK MATH: Total Added - Sold - Damaged - Returned
                 stats.currentStock = stats.added - stats.sold - stats.damaged - stats.returned;
                 if (stats.currentStock < 0) stats.currentStock = 0; 
 
@@ -537,7 +540,6 @@
             `;
             document.getElementById('productMetrics').innerHTML = productCardsHTML;
 
-            // Chart Generation using the calculated true stock
             const labels = Object.keys(productStats);
             if (labels.length === 0) return; 
 
@@ -568,7 +570,6 @@
                 return `<tr><td>${type}</td><td>${date}</td><td>${weight}</td><td>${qty} bags</td><td class="status-good">Added</td><td>${price.toFixed(2)}</td><td>${totalValue}</td><td><div class="action-group"><button class="btn btn-icon btn-update" onclick="window.editInventory('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('inventory', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
             }).join(''); 
             
-            // Re-populate dropdowns whenever inventory changes
             window.updateProductDropdowns(); 
             updateDashboard();
         }, (error) => console.error("Inventory Sync Error: ", error));
@@ -710,7 +711,7 @@
             window.closeModal('editDamageModal');
         };
 
-        // REPORTS
+        // UPDATED REPORT ENGINE
         window.generateReportPreview = () => {
             const monthVal = document.getElementById('reportMonthFilter').value;
             if (!monthVal) { alert("Select a month."); return; }
@@ -726,16 +727,35 @@
             dataState.returns.filter(i => (i.date || '').startsWith(monthVal)).forEach(i => getRow(i.date, i.type).ret += Number(i.qty || 0));
             dataState.damages.filter(i => (i.date || '').startsWith(monthVal)).forEach(i => getRow(i.date, i.type).dam += Number(i.qty || 0));
 
-            let html = '', tInv=0, tSold=0, tRet=0, tDam=0, tAmt=0;
+            let html = '', tInv=0, tSold=0, tRet=0, tDam=0, tAmt=0, tRemain=0;
             const rows = Object.values(reportDict).sort((a, b) => a.date.localeCompare(b.date));
 
-            if (rows.length === 0) html = `<tr><td colspan="7" style="text-align:center; padding:20px;">No data for ${prettyMonth}</td></tr>`;
+            if (rows.length === 0) html = `<tr><td colspan="8" style="text-align:center; padding:20px;">No data for ${prettyMonth}</td></tr>`;
             else {
                 rows.forEach(r => {
-                    tInv+=r.inv; tSold+=r.sold; tRet+=r.ret; tDam+=r.dam; tAmt+=r.amt;
-                    html += `<tr><td>${r.date}</td><td>${r.type}</td><td>${r.inv||'-'}</td><td>${r.sold||'-'}</td><td style="color:#e74c3c;">${r.dam||'-'}</td><td style="color:#3498db;">${r.ret||'-'}</td><td>${r.amt ? r.amt.toLocaleString(undefined, {minimumFractionDigits:2}) : '-'}</td></tr>`;
+                    const remain = r.inv - r.sold - r.dam - r.ret;
+                    tInv+=r.inv; tSold+=r.sold; tRet+=r.ret; tDam+=r.dam; tAmt+=r.amt; tRemain+=remain;
+                    
+                    html += `<tr>
+                        <td>${r.date}</td>
+                        <td>${r.type}</td>
+                        <td>${r.inv||'-'}</td>
+                        <td>${r.sold||'-'}</td>
+                        <td style="color:#e74c3c;">${r.dam||'-'}</td>
+                        <td style="color:#3498db;">${r.ret||'-'}</td>
+                        <td style="font-weight:bold; color:${remain < 0 ? '#e74c3c' : 'inherit'}">${remain}</td>
+                        <td>${r.amt ? r.amt.toLocaleString(undefined, {minimumFractionDigits:2}) : '-'}</td>
+                    </tr>`;
                 });
-                html += `<tr style="background:var(--primary-color);color:white;font-weight:bold;"><td colspan="2" align="right">TOTALS:</td><td>${tInv}</td><td>${tSold}</td><td>${tDam}</td><td>${tRet}</td><td>GHS ${tAmt.toLocaleString(undefined, {minimumFractionDigits:2})}</td></tr>`;
+                html += `<tr style="background:var(--primary-color);color:white;font-weight:bold;">
+                    <td colspan="2" align="right">TOTALS:</td>
+                    <td>${tInv}</td>
+                    <td>${tSold}</td>
+                    <td>${tDam}</td>
+                    <td>${tRet}</td>
+                    <td>${tRemain}</td>
+                    <td>GHS ${tAmt.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                </tr>`;
             }
             document.getElementById('reportPreviewBody').innerHTML = html; document.getElementById('reportPreviewArea').style.display = 'block';
         };
