@@ -25,7 +25,7 @@
         /* Main Layout */
         .main-wrapper { flex: 1; display: flex; flex-direction: column; height: 100vh; width: 100%; overflow: hidden; }
         
-        /* Mobile Header (Now inside main-wrapper) */
+        /* Mobile Header */
         .mobile-header { display: none; background-color: var(--primary-color); color: white; padding: 15px 20px; align-items: center; justify-content: space-between; z-index: 1000; width: 100%; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
         .mobile-header button { background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 10px; margin: -10px; display: flex; align-items: center; justify-content: center;}
         .mobile-header img { height: 40px; background: white; padding: 4px; border-radius: 4px; }
@@ -98,12 +98,12 @@
     <!-- Sidebar Navigation -->
     <div class="sidebar" id="sidebar">
         <div class="brand">
-            <img src="logo.png" alt="Boris B's Chicken">
+            <img src="logo.png" alt="Boris B Farms">
         </div>
         <ul class="nav-links">
             <li class="nav-item active" onclick="window.switchTab('dashboard', this)"><i class="fas fa-chart-line"></i> Dashboard</li>
             <li class="nav-item" onclick="window.switchTab('inventory', this)"><i class="fas fa-boxes"></i> Inventory Management</li>
-            <li class="nav-item" onclick="window.switchTab('sales', this)"><i class="fas fa-cash-register"></i> Sales</li>
+            <li class="nav-item" onclick="window.switchTab('sales', this)"><i class="fas fa-cash-register"></i> Sales Management</li>
             <li class="nav-item" onclick="window.switchTab('returned', this)"><i class="fas fa-undo-alt"></i> Returned Products</li>
             <li class="nav-item" onclick="window.switchTab('damaged', this)"><i class="fas fa-heart-broken"></i> Damaged Products</li>
             <li class="nav-item" onclick="window.switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
@@ -115,7 +115,7 @@
         
         <!-- Mobile Header (Visible only on small screens) -->
         <div class="mobile-header">
-            <img src="logo.png" alt="Boris B's Chicken">
+            <img src="logo.png" alt="Boris B Farms">
             <button onclick="window.toggleSidebar()"><i class="fas fa-bars"></i></button>
         </div>
 
@@ -124,9 +124,13 @@
             <!-- Dashboard Section -->
             <div id="dashboard" class="section active">
                 <h1>Overview Dashboard</h1>
-                <div class="dashboard-grid" id="mainMetrics">Loading metrics...</div>
+                <div class="dashboard-grid" id="mainMetrics">
+                    <p style="color: #666; font-style: italic;">Connecting to database network...</p>
+                </div>
+                
                 <h2 style="margin-top: 20px;">Product Quantities (In Stock)</h2>
                 <div class="dashboard-grid" id="productMetrics"></div>
+
                 <div class="chart-container"><canvas id="salesTrendChart"></canvas></div>
             </div>
 
@@ -162,7 +166,7 @@
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead><tr><th>Date</th><th>Invoice #</th><th>Customer Name</th><th>Feed Type</th><th>Qty (Bags)</th><th>Total Amount (GHS)</th><th>Status</th><th>Action</th></tr></thead>
+                        <thead><tr><th>Date</th><th>Invoice #</th><th>Customer Name</th><th>Feed Type</th><th>Qty (Bags)</th><th>Unit Price (GHS)</th><th>Total Amount (GHS)</th><th>Status</th><th>Action</th></tr></thead>
                         <tbody id="salesBody"></tbody>
                     </table>
                 </div>
@@ -234,46 +238,87 @@
     </div> <!-- End Main Wrapper -->
 
     <!-- ================= MODALS ================= -->
+    
+    <!-- Centralized Datalist for Inventory Add/Edit to prevent typos while allowing new product types -->
+    <datalist id="feedTypeList"></datalist>
+
     <!-- Sales Modals -->
     <div id="addSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Record New Sale</h2>
         <form onsubmit="window.submitAddSaleForm(event)">
-            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="saleDate" required></div><div class="form-group"><label>Invoice #</label><input type="text" id="saleInvoice" required></div></div>
-            <div class="form-group"><label>Customer Name</label><input type="text" id="saleCustomer" required></div><div class="form-group"><label>Feed Type</label><input type="text" id="saleType" required></div>
-            <div class="form-row"><div class="form-group"><label>Qty (Bags)</label><input type="number" id="saleQty" required></div><div class="form-group"><label>Total (GHS)</label><input type="number" id="saleAmount" step="0.01" required></div></div>
-            <div class="form-group"><label>Status</label><select id="saleStatus"><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div><button type="submit" class="btn" style="width: 100%;">Save</button>
+            <div class="form-row">
+                <div class="form-group"><label>Date</label><input type="date" id="saleDate" required></div>
+                <div class="form-group"><label>Invoice #</label><input type="text" id="saleInvoice" required></div>
+            </div>
+            <div class="form-group"><label>Customer Name</label><input type="text" id="saleCustomer" required></div>
+            <!-- Dynamic Select Dropdown -->
+            <div class="form-group"><label>Feed Type</label><select id="saleType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
+            <div class="form-row">
+                <div class="form-group"><label>Qty (Bags)</label><input type="number" id="saleQty" required oninput="window.calcSaleTotal('saleQty', 'saleUnitPrice', 'saleAmount')"></div>
+                <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="saleUnitPrice" step="0.01" required oninput="window.calcSaleTotal('saleQty', 'saleUnitPrice', 'saleAmount')"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Total (GHS)</label><input type="number" id="saleAmount" step="0.01" required></div>
+                <div class="form-group"><label>Status</label><select id="saleStatus"><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div>
+            </div>
+            <button type="submit" class="btn" style="width: 100%;">Save</button>
         </form>
     </div></div>
+    
     <div id="editSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Sale</h2>
         <form onsubmit="window.submitEditSaleForm(event)">
-            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editSaleDate" required></div><div class="form-group"><label>Invoice #</label><input type="text" id="editSaleInvoice" required></div></div>
-            <div class="form-group"><label>Customer</label><input type="text" id="editSaleCustomer" required></div><div class="form-group"><label>Feed Type</label><input type="text" id="editSaleType" required></div>
-            <div class="form-row"><div class="form-group"><label>Qty (Bags)</label><input type="number" id="editSaleQty" required></div><div class="form-group"><label>Total (GHS)</label><input type="number" id="editSaleAmount" step="0.01" required></div></div>
-            <div class="form-group"><label>Status</label><select id="editSaleStatus"><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div><button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
+            <div class="form-row">
+                <div class="form-group"><label>Date</label><input type="date" id="editSaleDate" required></div>
+                <div class="form-group"><label>Invoice #</label><input type="text" id="editSaleInvoice" required></div>
+            </div>
+            <div class="form-group"><label>Customer</label><input type="text" id="editSaleCustomer" required></div>
+            <!-- Dynamic Select Dropdown -->
+            <div class="form-group"><label>Feed Type</label><select id="editSaleType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
+            <div class="form-row">
+                <div class="form-group"><label>Qty (Bags)</label><input type="number" id="editSaleQty" required oninput="window.calcSaleTotal('editSaleQty', 'editSaleUnitPrice', 'editSaleAmount')"></div>
+                <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="editSaleUnitPrice" step="0.01" required oninput="window.calcSaleTotal('editSaleQty', 'editSaleUnitPrice', 'editSaleAmount')"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Total (GHS)</label><input type="number" id="editSaleAmount" step="0.01" required></div>
+                <div class="form-group"><label>Status</label><select id="editSaleStatus"><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div>
+            </div>
+            <button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
         </form>
     </div></div>
+
     <div id="viewSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Sale Details</h2>
-        <div class="form-group"><label>Invoice / Date</label><input type="text" id="viewInvoiceDate" disabled></div><div class="form-group"><label>Customer Name</label><input type="text" id="viewCustomer" disabled></div><div class="form-group"><label>Feed Type</label><input type="text" id="viewType" disabled></div>
-        <div class="form-row"><div class="form-group"><label>Qty</label><input type="text" id="viewQty" disabled></div><div class="form-group"><label>Amount</label><input type="text" id="viewAmount" disabled></div></div><div class="form-group"><label>Status</label><input type="text" id="viewStatus" disabled></div>
+        <div class="form-group"><label>Invoice / Date</label><input type="text" id="viewInvoiceDate" disabled></div>
+        <div class="form-group"><label>Customer Name</label><input type="text" id="viewCustomer" disabled></div>
+        <div class="form-group"><label>Feed Type</label><input type="text" id="viewType" disabled></div>
+        <div class="form-row">
+            <div class="form-group"><label>Qty</label><input type="text" id="viewQty" disabled></div>
+            <div class="form-group"><label>Unit Price</label><input type="text" id="viewUnitPrice" disabled></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Total Amount</label><input type="text" id="viewAmount" disabled></div>
+            <div class="form-group"><label>Status</label><input type="text" id="viewStatus" disabled></div>
+        </div>
     </div></div>
 
     <!-- Inventory Modals -->
     <div id="addModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Add Stock</h2>
         <form onsubmit="window.submitAddForm(event)">
-            <div class="form-row"><div class="form-group"><label>Feed Type</label><input type="text" id="addType" required></div><div class="form-group"><label>Date Received</label><input type="date" id="addDate" required></div></div>
+            <!-- Uses Datalist -->
+            <div class="form-row"><div class="form-group"><label>Feed Type</label><input type="text" id="addType" list="feedTypeList" autocomplete="off" required></div><div class="form-group"><label>Date Received</label><input type="date" id="addDate" required></div></div>
             <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input type="number" id="addWeight" required></div><div class="form-group"><label>Quantity (Bags)</label><input type="number" id="addQty" required></div></div>
             <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="addPrice" step="0.01" required></div><button type="submit" class="btn" style="width: 100%;">Save</button>
         </form>
     </div></div>
     <div id="updateModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('updateModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Stock</h2>
         <form onsubmit="window.submitUpdateInvForm(event)">
-            <div class="form-group"><label>Feed Type</label><input type="text" id="updType" required></div>
-            <div class="form-row"><div class="form-group"><label>Date Received</label><input type="date" id="updDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="updQty" required></div></div>
+            <!-- Uses Datalist -->
+            <div class="form-group"><label>Feed Type</label><input type="text" id="updType" list="feedTypeList" autocomplete="off" required></div>
+            <div class="form-row"><div class="form-group"><label>Date Received</label><input type="date" id="updDate" required></div><div class="form-group"><label>Quantity Added</label><input type="number" id="updQty" required></div></div>
             <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="updPrice" step="0.01" required></div><button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
         </form>
     </div></div>
     <div id="viewInvModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewInvModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Stock Details</h2>
         <div class="form-row"><div class="form-group"><label>Feed Type</label><input type="text" id="viewInvType" disabled></div><div class="form-group"><label>Date Received</label><input type="text" id="viewInvDate" disabled></div></div>
-        <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input type="text" id="viewInvWeight" disabled></div><div class="form-group"><label>Stock Level</label><input type="text" id="viewInvQty" disabled></div></div>
+        <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input type="text" id="viewInvWeight" disabled></div><div class="form-group"><label>Initial Quantity Added</label><input type="text" id="viewInvQty" disabled></div></div>
         <div class="form-row"><div class="form-group"><label>Price (GHS)</label><input type="text" id="viewInvPrice" disabled></div><div class="form-group"><label>Status</label><input type="text" id="viewInvStatus" disabled></div></div>
     </div></div>
 
@@ -281,14 +326,18 @@
     <div id="addReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Log Return</h2>
         <form onsubmit="window.submitAddReturnForm(event)">
             <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="returnDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="returnQty" required></div></div>
-            <div class="form-group"><label>Customer</label><input type="text" id="returnCustomer" required></div><div class="form-group"><label>Feed Type</label><input type="text" id="returnType" required></div>
+            <div class="form-group"><label>Customer</label><input type="text" id="returnCustomer" required></div>
+            <!-- Dynamic Select Dropdown -->
+            <div class="form-group"><label>Feed Type</label><select id="returnType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
             <div class="form-group"><label>Reason</label><input type="text" id="returnReason" required></div><div class="form-group"><label>Condition</label><select id="returnCondition"><option value="Intact / Resalable">Intact / Resalable</option><option value="Damaged">Damaged</option></select></div><button type="submit" class="btn" style="width: 100%;">Save</button>
         </form>
     </div></div>
     <div id="editReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Return</h2>
         <form onsubmit="window.submitEditReturnForm(event)">
             <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editReturnDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="editReturnQty" required></div></div>
-            <div class="form-group"><label>Customer</label><input type="text" id="editReturnCustomer" required></div><div class="form-group"><label>Feed Type</label><input type="text" id="editReturnType" required></div>
+            <div class="form-group"><label>Customer</label><input type="text" id="editReturnCustomer" required></div>
+            <!-- Dynamic Select Dropdown -->
+            <div class="form-group"><label>Feed Type</label><select id="editReturnType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
             <div class="form-group"><label>Reason</label><input type="text" id="editReturnReason" required></div><div class="form-group"><label>Condition</label><select id="editReturnCondition"><option value="Intact / Resalable">Intact / Resalable</option><option value="Damaged">Damaged</option></select></div><button type="submit" class="btn btn-update" style="width: 100%;">Save</button>
         </form>
     </div></div>
@@ -302,14 +351,18 @@
     <div id="addDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Report Damage</h2>
         <form onsubmit="window.submitAddDamageForm(event)">
             <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="damageDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="damageQty" required></div></div>
-            <div class="form-group"><label>Feed Type</label><input type="text" id="damageType" required></div><div class="form-group"><label>Location</label><input type="text" id="damageLocation" required></div>
+            <!-- Dynamic Select Dropdown -->
+            <div class="form-group"><label>Feed Type</label><select id="damageType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
+            <div class="form-group"><label>Location</label><input type="text" id="damageLocation" required></div>
             <div class="form-group"><label>Description</label><input type="text" id="damageDesc" required></div><div class="form-group"><label>Loss (GHS)</label><input type="number" id="damageLoss" step="0.01" required></div><button type="submit" class="btn btn-danger" style="width: 100%;">Save</button>
         </form>
     </div></div>
     <div id="editDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Damage</h2>
         <form onsubmit="window.submitEditDamageForm(event)">
             <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editDamageDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="editDamageQty" required></div></div>
-            <div class="form-group"><label>Feed Type</label><input type="text" id="editDamageType" required></div><div class="form-group"><label>Location</label><input type="text" id="editDamageLocation" required></div>
+            <!-- Dynamic Select Dropdown -->
+            <div class="form-group"><label>Feed Type</label><select id="editDamageType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
+            <div class="form-group"><label>Location</label><input type="text" id="editDamageLocation" required></div>
             <div class="form-group"><label>Description</label><input type="text" id="editDamageDesc" required></div><div class="form-group"><label>Loss (GHS)</label><input type="number" id="editDamageLoss" step="0.01" required></div><button type="submit" class="btn btn-update" style="width: 100%;">Save</button>
         </form>
     </div></div>
@@ -339,7 +392,6 @@
         let dataState = { inventory: [], sales: [], returns: [], damages: [] };
         let activeEditId = null;
 
-        // Mobile UI Helpers
         window.toggleSidebar = () => {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -359,6 +411,13 @@
         window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; activeEditId = null; };
         window.onclick = (e) => { if (e.target.classList.contains('modal-overlay')) { e.target.style.display = "none"; activeEditId = null;} };
 
+        // Auto-calculate Total in Sales forms
+        window.calcSaleTotal = (qtyId, priceId, totalId) => {
+            const qty = parseFloat(document.getElementById(qtyId).value) || 0;
+            const price = parseFloat(document.getElementById(priceId).value) || 0;
+            document.getElementById(totalId).value = (qty * price).toFixed(2);
+        };
+
         window.filterTable = (searchId, monthId, tbodyId) => {
             const searchVal = document.getElementById(searchId).value.toLowerCase(); 
             const monthVal = document.getElementById(monthId).value; 
@@ -375,54 +434,114 @@
             document.getElementById(searchId).value = ''; document.getElementById(monthId).value = ''; window.filterTable(searchId, monthId, tbodyId);
         };
 
+        // NEW: Function to dynamically populate all Feed Type dropdowns based on Inventory
+        window.updateProductDropdowns = () => {
+            const uniqueTypes = [...new Set(dataState.inventory.map(item => item.type).filter(Boolean))];
+            
+            // 1. Update strict dropdowns (Sales, Returns, Damages)
+            const selectOptionsHTML = '<option value="" disabled selected>Select Feed Type...</option>' + uniqueTypes.map(type => `<option value="${type}">${type}</option>`).join('');
+            const dropdownIds = ['saleType', 'editSaleType', 'returnType', 'editReturnType', 'damageType', 'editDamageType'];
+            
+            dropdownIds.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    const currentVal = el.value; // Remember what user had selected
+                    el.innerHTML = selectOptionsHTML;
+                    // Restore selection if it still exists in the new list
+                    if(currentVal && uniqueTypes.includes(currentVal)) {
+                        el.value = currentVal;
+                    }
+                }
+            });
+
+            // 2. Update the Datalist (Inventory - auto-completes to prevent typos, but allows new products)
+            const datalistOptionsHTML = uniqueTypes.map(type => `<option value="${type}">`).join('');
+            const datalist = document.getElementById('feedTypeList');
+            if(datalist) datalist.innerHTML = datalistOptionsHTML;
+        };
+
         let salesTrendChartInstance = null;
+        
         function updateDashboard() {
-            let totalBags = 0, lowStockAlerts = 0, lowStockList = [];
-            let productCardsHTML = '';
             let productStats = {}; 
 
+            // Step A: Calculate all raw inventory added
             dataState.inventory.forEach(item => {
-                totalBags += item.qty;
-                if (item.qty < 50) { lowStockAlerts++; lowStockList.push(`${item.type} (${item.qty})`); }
-                if(!productStats[item.type]) productStats[item.type] = { inStock: 0, sold: 0 };
-                productStats[item.type].inStock += item.qty;
-
-                const iconColor = item.qty < 50 ? '#e74c3c' : 'var(--secondary-color)';
-                const bgColor = item.qty < 50 ? '#fceceb' : 'var(--primary-color)';
-                productCardsHTML += `<div class="card"><i class="fas fa-box card-icon" style="color: ${iconColor}; background: ${bgColor};"></i><div class="card-info"><h3>${item.type}</h3><p>${item.qty} bags</p></div></div>`;
+                const type = item.type || 'Unknown';
+                const qty = Number(item.qty || 0);
+                if(!productStats[type]) productStats[type] = { added: 0, sold: 0, returned: 0, damaged: 0, currentStock: 0 };
+                productStats[type].added += qty;
             });
 
+            // Step B: Calculate total sales
+            let totalSalesRevenue = 0;
+            let totalBagsSold = 0;
             dataState.sales.forEach(item => {
-                if(!productStats[item.type]) productStats[item.type] = { inStock: 0, sold: 0 };
-                productStats[item.type].sold += item.qty;
+                const type = item.type || 'Unknown';
+                const qty = Number(item.qty || 0);
+                const amount = Number(item.amount || 0);
+                totalSalesRevenue += amount;
+                totalBagsSold += qty;
+                if(!productStats[type]) productStats[type] = { added: 0, sold: 0, returned: 0, damaged: 0, currentStock: 0 };
+                productStats[type].sold += qty;
             });
 
+            // Step C: Calculate total returns
             let totalReturned = 0, returnedTypes = {};
             dataState.returns.forEach(item => {
-                totalReturned += item.qty;
-                returnedTypes[item.type] = (returnedTypes[item.type] || 0) + item.qty;
+                const type = item.type || 'Unknown';
+                const qty = Number(item.qty || 0);
+                totalReturned += qty;
+                returnedTypes[type] = (returnedTypes[type] || 0) + qty;
+                if(!productStats[type]) productStats[type] = { added: 0, sold: 0, returned: 0, damaged: 0, currentStock: 0 };
+                productStats[type].returned += qty;
             });
 
+            // Step D: Calculate total damages
             let totalDamaged = 0, damagedTypes = {};
             dataState.damages.forEach(item => {
-                totalDamaged += item.qty;
-                damagedTypes[item.type] = (damagedTypes[item.type] || 0) + item.qty;
+                const type = item.type || 'Unknown';
+                const qty = Number(item.qty || 0);
+                totalDamaged += qty;
+                damagedTypes[type] = (damagedTypes[type] || 0) + qty;
+                if(!productStats[type]) productStats[type] = { added: 0, sold: 0, returned: 0, damaged: 0, currentStock: 0 };
+                productStats[type].damaged += qty;
             });
 
-            const lowStockDetails = lowStockList.length > 0 ? lowStockList.join(', ') : 'All stocks healthy';
+            // Step E: Calculate CURRENT true stock levels & populate the cards
+            let totalCurrentStock = 0, lowStockAlerts = 0, lowStockList = [];
+            let productCardsHTML = '';
+
+            Object.keys(productStats).forEach(type => {
+                const stats = productStats[type];
+                
+                // TRUE STOCK MATH: Total Added - Sold - Damaged - Returned
+                stats.currentStock = stats.added - stats.sold - stats.damaged - stats.returned;
+                if (stats.currentStock < 0) stats.currentStock = 0; 
+
+                totalCurrentStock += stats.currentStock;
+
+                const iconColor = stats.currentStock < 50 ? '#e74c3c' : 'var(--secondary-color)';
+                const bgColor = stats.currentStock < 50 ? '#fceceb' : 'var(--primary-color)';
+                productCardsHTML += `<div class="card"><i class="fas fa-box card-icon" style="color: ${iconColor}; background: ${bgColor};"></i><div class="card-info"><h3>${type}</h3><p>${stats.currentStock} bags</p><span style="font-size:11px; color:#999;">Total Added: ${stats.added}</span></div></div>`;
+            });
+
             const retDetails = totalReturned > 0 ? Object.entries(returnedTypes).map(([t, q]) => `${t} (${q})`).join(', ') : 'No returns';
             const damDetails = totalDamaged > 0 ? Object.entries(damagedTypes).map(([t, q]) => `${t} (${q})`).join(', ') : 'No damages';
 
             document.getElementById('mainMetrics').innerHTML = `
-                <div class="card"><i class="fas fa-sack-dollar card-icon"></i><div class="card-info"><h3>Total Feed in Stock</h3><p>${totalBags.toLocaleString()} bags</p></div></div>
-                <div class="card"><i class="fas fa-exclamation-triangle card-icon" style="color: #e74c3c; background: #fceceb;"></i><div class="card-info"><h3>Low Stock Alerts</h3><p>${lowStockAlerts} Types</p><span class="card-details" style="color:#e74c3c;">${lowStockDetails}</span></div></div>
+                <div class="card"><i class="fas fa-chart-line card-icon" style="color: #27ae60; background: #e9f7ef;"></i><div class="card-info"><h3>Total Revenue</h3><p>GHS ${totalSalesRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}</p></div></div>
+                <div class="card"><i class="fas fa-cash-register card-icon" style="color: #3498db; background: #eaf2f8;"></i><div class="card-info"><h3>Total Bags Sold</h3><p>${totalBagsSold.toLocaleString()} bags</p></div></div>
                 <div class="card"><i class="fas fa-undo-alt card-icon" style="color: #3498db; background: #eaf2f8;"></i><div class="card-info"><h3>Returned Products</h3><p>${totalReturned.toLocaleString()} bags</p><span class="card-details">${retDetails}</span></div></div>
                 <div class="card"><i class="fas fa-heart-broken card-icon" style="color: #e74c3c; background: #fceceb;"></i><div class="card-info"><h3>Damaged Products</h3><p>${totalDamaged.toLocaleString()} bags</p><span class="card-details">${damDetails}</span></div></div>
             `;
             document.getElementById('productMetrics').innerHTML = productCardsHTML;
 
-            const ctx = document.getElementById('salesTrendChart').getContext('2d');
+            // Chart Generation using the calculated true stock
             const labels = Object.keys(productStats);
+            if (labels.length === 0) return; 
+
+            const ctx = document.getElementById('salesTrendChart').getContext('2d');
             if (salesTrendChartInstance) salesTrendChartInstance.destroy();
             salesTrendChartInstance = new Chart(ctx, {
                 type: 'bar',
@@ -430,35 +549,70 @@
                     labels: labels,
                     datasets: [
                         { label: 'Total Sold', data: labels.map(l => productStats[l].sold), backgroundColor: '#27ae60', borderRadius: 4 },
-                        { label: 'In Stock', data: labels.map(l => productStats[l].inStock), backgroundColor: '#f1c40f', borderRadius: 4 }
+                        { label: 'Current Stock', data: labels.map(l => productStats[l].currentStock), backgroundColor: '#f1c40f', borderRadius: 4 }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Performance: Sold vs In Stock' } } }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Performance: Total Sold vs Current Stock' } } }
             });
         }
 
         onSnapshot(collection(db, "inventory"), (snapshot) => {
             dataState.inventory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             document.getElementById('inventoryBody').innerHTML = dataState.inventory.map(item => {
-                const totalValue = (item.qty * item.price).toLocaleString('en-US', {minimumFractionDigits: 2});
-                return `<tr><td>${item.type}</td><td>${item.date}</td><td>${item.weight}</td><td>${item.qty} bags</td><td class="${item.qty < 50 ? 'status-low' : 'status-good'}">${item.qty < 50 ? 'Low Stock' : 'Healthy'}</td><td>${item.price.toFixed(2)}</td><td>${totalValue}</td><td><div class="action-group"><button class="btn btn-icon btn-update" onclick="window.editInventory('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('inventory', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
-            }).join(''); updateDashboard();
-        });
+                const price = Number(item.price || 0);
+                const qty = Number(item.qty || 0);
+                const weight = Number(item.weight || 0);
+                const type = item.type || 'Unknown';
+                const date = item.date || '-';
+                const totalValue = (qty * price).toLocaleString('en-US', {minimumFractionDigits: 2});
+                return `<tr><td>${type}</td><td>${date}</td><td>${weight}</td><td>${qty} bags</td><td class="status-good">Added</td><td>${price.toFixed(2)}</td><td>${totalValue}</td><td><div class="action-group"><button class="btn btn-icon btn-update" onclick="window.editInventory('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('inventory', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
+            }).join(''); 
+            
+            // Re-populate dropdowns whenever inventory changes
+            window.updateProductDropdowns(); 
+            updateDashboard();
+        }, (error) => console.error("Inventory Sync Error: ", error));
 
         onSnapshot(collection(db, "sales"), (snapshot) => {
             dataState.sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            document.getElementById('salesBody').innerHTML = dataState.sales.map(item => `<tr><td>${item.date}</td><td>${item.invoice}</td><td>${item.customer}</td><td>${item.type}</td><td>${item.qty}</td><td>${item.amount.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td class="${item.status === 'Paid' ? 'status-good' : 'status-warning'}">${item.status}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewSale('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editSale('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('sales', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`).join(''); updateDashboard();
-        });
+            document.getElementById('salesBody').innerHTML = dataState.sales.map(item => {
+                const date = item.date || '-';
+                const invoice = item.invoice || '-';
+                const customer = item.customer || 'Unknown';
+                const type = item.type || 'Unknown';
+                const qty = Number(item.qty || 0);
+                const unitPrice = Number(item.unitPrice || 0);
+                const amount = Number(item.amount || 0);
+                const status = item.status || 'Pending';
+                return `<tr><td>${date}</td><td>${invoice}</td><td>${customer}</td><td>${type}</td><td>${qty}</td><td>${unitPrice.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td>${amount.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td class="${status === 'Paid' ? 'status-good' : 'status-warning'}">${status}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewSale('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editSale('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('sales', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
+            }).join(''); updateDashboard();
+        }, (error) => console.error("Sales Sync Error: ", error));
 
         onSnapshot(collection(db, "returned"), (snapshot) => {
             dataState.returns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            document.getElementById('returnedBody').innerHTML = dataState.returns.map(item => `<tr><td>${item.date}</td><td>${item.customer}</td><td>${item.type}</td><td>${item.qty}</td><td>${item.reason}</td><td class="${item.condition.includes('Damaged') ? 'status-low' : 'status-good'}">${item.condition}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewReturn('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editReturn('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('returned', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`).join(''); updateDashboard();
-        });
+            document.getElementById('returnedBody').innerHTML = dataState.returns.map(item => {
+                const date = item.date || '-';
+                const customer = item.customer || 'Unknown';
+                const type = item.type || 'Unknown';
+                const qty = Number(item.qty || 0);
+                const reason = item.reason || '-';
+                const condition = item.condition || 'Unknown';
+                return `<tr><td>${date}</td><td>${customer}</td><td>${type}</td><td>${qty}</td><td>${reason}</td><td class="${condition.includes('Damaged') ? 'status-low' : 'status-good'}">${condition}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewReturn('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editReturn('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('returned', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
+            }).join(''); updateDashboard();
+        }, (error) => console.error("Returns Sync Error: ", error));
 
         onSnapshot(collection(db, "damaged"), (snapshot) => {
             dataState.damages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            document.getElementById('damagedBody').innerHTML = dataState.damages.map(item => `<tr><td>${item.date}</td><td>${item.type}</td><td>${item.qty}</td><td>${item.location}</td><td>${item.desc}</td><td>${item.loss.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewDamage('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editDamage('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('damaged', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`).join(''); updateDashboard();
-        });
+            document.getElementById('damagedBody').innerHTML = dataState.damages.map(item => {
+                const date = item.date || '-';
+                const type = item.type || 'Unknown';
+                const qty = Number(item.qty || 0);
+                const location = item.location || '-';
+                const desc = item.desc || '-';
+                const loss = Number(item.loss || 0);
+                return `<tr><td>${date}</td><td>${type}</td><td>${qty}</td><td>${location}</td><td>${desc}</td><td>${loss.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewDamage('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editDamage('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('damaged', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
+            }).join(''); updateDashboard();
+        }, (error) => console.error("Damages Sync Error: ", error));
 
         window.deleteRecord = async (colName, id) => { if (confirm(`Delete this record from ${colName}?`)) await deleteDoc(doc(db, colName, id)); };
 
@@ -470,7 +624,7 @@
         };
         window.editInventory = (id) => {
             activeEditId = id; const item = dataState.inventory.find(i => i.id === id);
-            document.getElementById('updType').value = item.type; document.getElementById('updDate').value = item.date; document.getElementById('updQty').value = item.qty; document.getElementById('updPrice').value = item.price; window.openModal('updateModal');
+            document.getElementById('updType').value = item.type || ''; document.getElementById('updDate').value = item.date || ''; document.getElementById('updQty').value = item.qty || 0; document.getElementById('updPrice').value = item.price || 0; window.openModal('updateModal');
         };
         window.submitUpdateInvForm = async (e) => {
             e.preventDefault();
@@ -481,20 +635,38 @@
         // SALES CRUD
         window.submitAddSaleForm = async (e) => {
             e.preventDefault();
-            await addDoc(collection(db, "sales"), { date: document.getElementById('saleDate').value, invoice: document.getElementById('saleInvoice').value, customer: document.getElementById('saleCustomer').value, type: document.getElementById('saleType').value, qty: parseInt(document.getElementById('saleQty').value), amount: parseFloat(document.getElementById('saleAmount').value), status: document.getElementById('saleStatus').value });
+            await addDoc(collection(db, "sales"), { 
+                date: document.getElementById('saleDate').value, invoice: document.getElementById('saleInvoice').value, 
+                customer: document.getElementById('saleCustomer').value, type: document.getElementById('saleType').value, 
+                qty: parseInt(document.getElementById('saleQty').value), unitPrice: parseFloat(document.getElementById('saleUnitPrice').value), 
+                amount: parseFloat(document.getElementById('saleAmount').value), status: document.getElementById('saleStatus').value 
+            });
             window.closeModal('addSaleModal'); e.target.reset();
         };
         window.viewSale = (id) => {
             const item = dataState.sales.find(i => i.id === id);
-            document.getElementById('viewInvoiceDate').value = `${item.invoice} (Logged: ${item.date})`; document.getElementById('viewCustomer').value = item.customer; document.getElementById('viewType').value = item.type; document.getElementById('viewQty').value = item.qty; document.getElementById('viewAmount').value = item.amount; document.getElementById('viewStatus').value = item.status; window.openModal('viewSaleModal');
+            document.getElementById('viewInvoiceDate').value = `${item.invoice || ''} (Logged: ${item.date || ''})`; 
+            document.getElementById('viewCustomer').value = item.customer || ''; document.getElementById('viewType').value = item.type || ''; 
+            document.getElementById('viewQty').value = item.qty || 0; document.getElementById('viewUnitPrice').value = Number(item.unitPrice || 0).toLocaleString(undefined, {minimumFractionDigits: 2}); 
+            document.getElementById('viewAmount').value = Number(item.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2}); document.getElementById('viewStatus').value = item.status || 'Pending'; 
+            window.openModal('viewSaleModal');
         };
         window.editSale = (id) => {
             activeEditId = id; const item = dataState.sales.find(i => i.id === id);
-            document.getElementById('editSaleDate').value = item.date; document.getElementById('editSaleInvoice').value = item.invoice; document.getElementById('editSaleCustomer').value = item.customer; document.getElementById('editSaleType').value = item.type; document.getElementById('editSaleQty').value = item.qty; document.getElementById('editSaleAmount').value = item.amount; document.getElementById('editSaleStatus').value = item.status; window.openModal('editSaleModal');
+            document.getElementById('editSaleDate').value = item.date || ''; document.getElementById('editSaleInvoice').value = item.invoice || ''; 
+            document.getElementById('editSaleCustomer').value = item.customer || ''; document.getElementById('editSaleType').value = item.type || ''; 
+            document.getElementById('editSaleQty').value = item.qty || 0; document.getElementById('editSaleUnitPrice').value = item.unitPrice || 0; 
+            document.getElementById('editSaleAmount').value = item.amount || 0; document.getElementById('editSaleStatus').value = item.status || 'Paid'; 
+            window.openModal('editSaleModal');
         };
         window.submitEditSaleForm = async (e) => {
             e.preventDefault();
-            await updateDoc(doc(db, "sales", activeEditId), { date: document.getElementById('editSaleDate').value, invoice: document.getElementById('editSaleInvoice').value, customer: document.getElementById('editSaleCustomer').value, type: document.getElementById('editSaleType').value, qty: parseInt(document.getElementById('editSaleQty').value), amount: parseFloat(document.getElementById('editSaleAmount').value), status: document.getElementById('editSaleStatus').value });
+            await updateDoc(doc(db, "sales", activeEditId), { 
+                date: document.getElementById('editSaleDate').value, invoice: document.getElementById('editSaleInvoice').value, 
+                customer: document.getElementById('editSaleCustomer').value, type: document.getElementById('editSaleType').value, 
+                qty: parseInt(document.getElementById('editSaleQty').value), unitPrice: parseFloat(document.getElementById('editSaleUnitPrice').value), 
+                amount: parseFloat(document.getElementById('editSaleAmount').value), status: document.getElementById('editSaleStatus').value 
+            });
             window.closeModal('editSaleModal');
         };
 
@@ -506,11 +678,11 @@
         };
         window.viewReturn = (id) => {
             const item = dataState.returns.find(i => i.id === id);
-            document.getElementById('viewReturnDate').value = item.date; document.getElementById('viewReturnCustomer').value = item.customer; document.getElementById('viewReturnType').value = item.type; document.getElementById('viewReturnQty').value = item.qty; document.getElementById('viewReturnReason').value = item.reason; document.getElementById('viewReturnCondition').value = item.condition; window.openModal('viewReturnModal');
+            document.getElementById('viewReturnDate').value = item.date || ''; document.getElementById('viewReturnCustomer').value = item.customer || ''; document.getElementById('viewReturnType').value = item.type || ''; document.getElementById('viewReturnQty').value = item.qty || 0; document.getElementById('viewReturnReason').value = item.reason || ''; document.getElementById('viewReturnCondition').value = item.condition || ''; window.openModal('viewReturnModal');
         };
         window.editReturn = (id) => {
             activeEditId = id; const item = dataState.returns.find(i => i.id === id);
-            document.getElementById('editReturnDate').value = item.date; document.getElementById('editReturnQty').value = item.qty; document.getElementById('editReturnCustomer').value = item.customer; document.getElementById('editReturnType').value = item.type; document.getElementById('editReturnReason').value = item.reason; document.getElementById('editReturnCondition').value = item.condition.includes('Damaged') ? 'Damaged' : 'Intact / Resalable'; window.openModal('editReturnModal');
+            document.getElementById('editReturnDate').value = item.date || ''; document.getElementById('editReturnQty').value = item.qty || 0; document.getElementById('editReturnCustomer').value = item.customer || ''; document.getElementById('editReturnType').value = item.type || ''; document.getElementById('editReturnReason').value = item.reason || ''; document.getElementById('editReturnCondition').value = item.condition || 'Intact / Resalable'; window.openModal('editReturnModal');
         };
         window.submitEditReturnForm = async (e) => {
             e.preventDefault();
@@ -526,11 +698,11 @@
         };
         window.viewDamage = (id) => {
             const item = dataState.damages.find(i => i.id === id);
-            document.getElementById('viewDamageDate').value = item.date; document.getElementById('viewDamageType').value = item.type; document.getElementById('viewDamageQty').value = item.qty; document.getElementById('viewDamageLocation').value = item.location; document.getElementById('viewDamageDesc').value = item.desc; document.getElementById('viewDamageLoss').value = item.loss; window.openModal('viewDamageModal');
+            document.getElementById('viewDamageDate').value = item.date || ''; document.getElementById('viewDamageType').value = item.type || ''; document.getElementById('viewDamageQty').value = item.qty || 0; document.getElementById('viewDamageLocation').value = item.location || ''; document.getElementById('viewDamageDesc').value = item.desc || ''; document.getElementById('viewDamageLoss').value = Number(item.loss || 0).toLocaleString(undefined, {minimumFractionDigits: 2}); window.openModal('viewDamageModal');
         };
         window.editDamage = (id) => {
             activeEditId = id; const item = dataState.damages.find(i => i.id === id);
-            document.getElementById('editDamageDate').value = item.date; document.getElementById('editDamageQty').value = item.qty; document.getElementById('editDamageType').value = item.type; document.getElementById('editDamageLocation').value = item.location; document.getElementById('editDamageDesc').value = item.desc; document.getElementById('editDamageLoss').value = item.loss; window.openModal('editDamageModal');
+            document.getElementById('editDamageDate').value = item.date || ''; document.getElementById('editDamageQty').value = item.qty || 0; document.getElementById('editDamageType').value = item.type || ''; document.getElementById('editDamageLocation').value = item.location || ''; document.getElementById('editDamageDesc').value = item.desc || ''; document.getElementById('editDamageLoss').value = item.loss || 0; window.openModal('editDamageModal');
         };
         window.submitEditDamageForm = async (e) => {
             e.preventDefault();
@@ -549,10 +721,10 @@
             let reportDict = {};
             const getRow = (d, t) => { const k = `${d}_${t}`; if(!reportDict[k]) reportDict[k] = {date:d, type:t, inv:0, sold:0, ret:0, dam:0, amt:0}; return reportDict[k]; };
 
-            dataState.inventory.filter(i => i.date.startsWith(monthVal)).forEach(i => getRow(i.date, i.type).inv += i.qty);
-            dataState.sales.filter(i => i.date.startsWith(monthVal)).forEach(i => { let r = getRow(i.date, i.type); r.sold += i.qty; r.amt += i.amount; });
-            dataState.returns.filter(i => i.date.startsWith(monthVal)).forEach(i => getRow(i.date, i.type).ret += i.qty);
-            dataState.damages.filter(i => i.date.startsWith(monthVal)).forEach(i => getRow(i.date, i.type).dam += i.qty);
+            dataState.inventory.filter(i => (i.date || '').startsWith(monthVal)).forEach(i => getRow(i.date, i.type).inv += Number(i.qty || 0));
+            dataState.sales.filter(i => (i.date || '').startsWith(monthVal)).forEach(i => { let r = getRow(i.date, i.type); r.sold += Number(i.qty || 0); r.amt += Number(i.amount || 0); });
+            dataState.returns.filter(i => (i.date || '').startsWith(monthVal)).forEach(i => getRow(i.date, i.type).ret += Number(i.qty || 0));
+            dataState.damages.filter(i => (i.date || '').startsWith(monthVal)).forEach(i => getRow(i.date, i.type).dam += Number(i.qty || 0));
 
             let html = '', tInv=0, tSold=0, tRet=0, tDam=0, tAmt=0;
             const rows = Object.values(reportDict).sort((a, b) => a.date.localeCompare(b.date));
