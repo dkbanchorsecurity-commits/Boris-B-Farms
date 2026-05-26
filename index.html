@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boris B Farms - Admin Portal</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e4620">
+    <link rel="apple-touch-icon" href="logo.png">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -211,14 +214,14 @@
                         <div class="form-group" style="flex: 1; margin: 0;"><label>Select Month</label><input type="month" id="reportMonthFilter"></div>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                             <button class="btn btn-update" onclick="window.generateReportPreview()"><i class="fas fa-search"></i> Generate Report</button>
-                            <button class="btn btn-info" onclick="window.downloadReport('pdf')"><i class="fas fa-file-pdf"></i> Download PDF</button>
+                            <button class="btn btn-success" onclick="window.downloadCSVReport()"><i class="fas fa-file-csv"></i> Download CSV</button>
                         </div>
                     </div>
                 </div>
                 <div id="reportPreviewArea" style="display: none; margin-top: 35px; animation: fadeIn 0.4s ease-in-out;">
                     <h2 style="border-bottom: 2px solid var(--secondary-color); padding-bottom: 10px; color: var(--primary-color);">Report For: <span id="previewMonthTitle"></span></h2>
                     <div class="table-responsive">
-                        <table class="data-table" style="margin-top: 20px;">
+                        <table class="data-table" id="reportTable" style="margin-top: 20px;">
                             <thead><tr>
                                 <th>Date</th>
                                 <th>Feed Type</th>
@@ -513,16 +516,12 @@
                 productStats[type].damaged += qty;
             });
 
-            let totalCurrentStock = 0, lowStockAlerts = 0, lowStockList = [];
             let productCardsHTML = '';
 
             Object.keys(productStats).forEach(type => {
                 const stats = productStats[type];
-                
                 stats.currentStock = stats.added - stats.sold - stats.damaged - stats.returned;
                 if (stats.currentStock < 0) stats.currentStock = 0; 
-
-                totalCurrentStock += stats.currentStock;
 
                 const iconColor = stats.currentStock < 50 ? '#e74c3c' : 'var(--secondary-color)';
                 const bgColor = stats.currentStock < 50 ? '#fceceb' : 'var(--primary-color)';
@@ -720,35 +719,61 @@
             document.getElementById('previewMonthTitle').innerText = prettyMonth;
 
             let reportDict = {};
-            const getRow = (d, t) => { const k = `${d}_${t}`; if(!reportDict[k]) reportDict[k] = {date:d, type:t, inv:0, sold:0, ret:0, dam:0, amt:0}; return reportDict[k]; };
+            
+            const getRow = (t) => { 
+                if(!reportDict[t]) reportDict[t] = { type: t, inv: 0, sold: 0, ret: 0, dam: 0, amt: 0 }; 
+                return reportDict[t]; 
+            };
 
-            dataState.inventory.filter(i => (i.date || '').startsWith(monthVal)).forEach(i => getRow(i.date, i.type).inv += Number(i.qty || 0));
-            dataState.sales.filter(i => (i.date || '').startsWith(monthVal)).forEach(i => { let r = getRow(i.date, i.type); r.sold += Number(i.qty || 0); r.amt += Number(i.amount || 0); });
-            dataState.returns.filter(i => (i.date || '').startsWith(monthVal)).forEach(i => getRow(i.date, i.type).ret += Number(i.qty || 0));
-            dataState.damages.filter(i => (i.date || '').startsWith(monthVal)).forEach(i => getRow(i.date, i.type).dam += Number(i.qty || 0));
+            dataState.inventory.forEach(i => {
+                if ((i.date || '').startsWith(monthVal)) {
+                    getRow(i.type).inv += Number(i.qty || 0);
+                }
+            });
+
+            dataState.sales.forEach(i => {
+                if ((i.date || '').startsWith(monthVal)) {
+                    let r = getRow(i.type);
+                    r.sold += Number(i.qty || 0);
+                    r.amt += Number(i.amount || 0);
+                }
+            });
+
+            dataState.returns.forEach(i => {
+                if ((i.date || '').startsWith(monthVal)) {
+                    getRow(i.type).ret += Number(i.qty || 0);
+                }
+            });
+
+            dataState.damages.forEach(i => {
+                if ((i.date || '').startsWith(monthVal)) {
+                    getRow(i.type).dam += Number(i.qty || 0);
+                }
+            });
 
             let html = '', tInv=0, tSold=0, tRet=0, tDam=0, tAmt=0, tRemain=0;
-            const rows = Object.values(reportDict).sort((a, b) => a.date.localeCompare(b.date));
+            const rows = Object.values(reportDict);
 
-            if (rows.length === 0) html = `<tr><td colspan="8" style="text-align:center; padding:20px;">No data for ${prettyMonth}</td></tr>`;
-            else {
+            if (rows.length === 0) {
+                html = `<tr><td colspan="8" style="text-align:center; padding:20px;">No data recorded for ${prettyMonth}</td></tr>`;
+            } else {
                 rows.forEach(r => {
                     const remain = r.inv - r.sold - r.dam - r.ret;
-                    tInv+=r.inv; tSold+=r.sold; tRet+=r.ret; tDam+=r.dam; tAmt+=r.amt; tRemain+=remain;
+                    tInv += r.inv; tSold += r.sold; tRet += r.ret; tDam += r.dam; tAmt += r.amt; tRemain += remain;
                     
                     html += `<tr>
-                        <td>${r.date}</td>
+                        <td>${monthVal}</td>
                         <td>${r.type}</td>
-                        <td>${r.inv||'-'}</td>
-                        <td>${r.sold||'-'}</td>
-                        <td style="color:#e74c3c;">${r.dam||'-'}</td>
-                        <td style="color:#3498db;">${r.ret||'-'}</td>
+                        <td>${r.inv || 0}</td>
+                        <td>${r.sold || 0}</td>
+                        <td style="color:#e74c3c;">${r.dam || 0}</td>
+                        <td style="color:#3498db;">${r.ret || 0}</td>
                         <td style="font-weight:bold; color:${remain < 0 ? '#e74c3c' : 'inherit'}">${remain}</td>
-                        <td>${r.amt ? r.amt.toLocaleString(undefined, {minimumFractionDigits:2}) : '-'}</td>
+                        <td>GHS ${r.amt.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
                     </tr>`;
                 });
                 html += `<tr style="background:var(--primary-color);color:white;font-weight:bold;">
-                    <td colspan="2" align="right">TOTALS:</td>
+                    <td colspan="2" align="right">MONTHLY TOTALS:</td>
                     <td>${tInv}</td>
                     <td>${tSold}</td>
                     <td>${tDam}</td>
@@ -757,10 +782,58 @@
                     <td>GHS ${tAmt.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
                 </tr>`;
             }
-            document.getElementById('reportPreviewBody').innerHTML = html; document.getElementById('reportPreviewArea').style.display = 'block';
+            document.getElementById('reportPreviewBody').innerHTML = html; 
+            document.getElementById('reportPreviewArea').style.display = 'block';
         };
 
-        window.downloadReport = (fmt) => alert(`Downloading ${document.getElementById('previewMonthTitle').innerText} in ${fmt.toUpperCase()} format...`);
+        // NEW: CSV DOWNLOAD FUNCTION
+        window.downloadCSVReport = () => {
+            const title = document.getElementById('previewMonthTitle').innerText;
+            if (!title) { alert("Please generate a report preview first."); return; }
+
+            const table = document.getElementById('reportTable');
+            const rows = table.querySelectorAll('tr');
+            
+            if (rows.length <= 1) { 
+                alert("No data available to download."); 
+                return; 
+            }
+
+            let csvContent = "";
+            rows.forEach(row => {
+                let rowData = [];
+                for (let i = 0; i < row.cells.length; i++) {
+                    // Grab text, remove commas so it doesn't break the CSV format, and wrap in quotes
+                    let cellText = row.cells[i].innerText.replace(/,/g, ''); 
+                    rowData.push(`"${cellText}"`);
+                }
+                csvContent += rowData.join(",") + "\n";
+            });
+
+            // Trigger the browser download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Boris_B_Report_${title.replace(' ', '_')}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
     </script>
 </body>
+<script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                .then(registration => console.log('ServiceWorker registered'))
+                .catch(err => console.log('ServiceWorker failed: ', err));
+            });
+        }
+    </script>
+</body>
+</html>
 </html>
