@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boris B Farms - Admin Portal</title>
+    
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e4620">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="icon" type="image/png" href="logo.png">
+
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -21,11 +23,15 @@
         .brand { padding: 20px; text-align: center; background-color: #153216; border-bottom: 2px solid var(--secondary-color); }
         .brand img { max-width: 100%; max-height: 100px; background: white; padding: 5px; border-radius: 8px; }
         
-        .nav-links { list-style: none; padding: 0; margin: 20px 0; overflow-y: auto;}
+        .nav-links { list-style: none; padding: 0; margin: 20px 0; overflow-y: auto; display: flex; flex-direction: column; height: 100%;}
         .nav-item { padding: 15px 25px; cursor: pointer; display: flex; align-items: center; gap: 15px; font-size: 15px; transition: all 0.3s ease; }
         .nav-item:hover, .nav-item.active { background-color: var(--sidebar-hover); border-left: 4px solid var(--secondary-color); }
         .nav-item.active { font-weight: bold; color: var(--secondary-color); }
         
+        /* Custom Install Button Styling */
+        #installAppBtn { margin: 20px 15px; padding: 12px; background-color: #27ae60; color: white; border-radius: 8px; justify-content: center; font-weight: bold; border-left: none; transition: transform 0.2s;}
+        #installAppBtn:hover { background-color: #219653; transform: scale(1.02); }
+
         /* Main Layout */
         .main-wrapper { flex: 1; display: flex; flex-direction: column; height: 100vh; width: 100%; overflow: hidden; }
         
@@ -111,6 +117,8 @@
             <li class="nav-item" data-target="returned" onclick="window.switchTab('returned', this)"><i class="fas fa-undo-alt"></i> Returned Products</li>
             <li class="nav-item" data-target="damaged" onclick="window.switchTab('damaged', this)"><i class="fas fa-heart-broken"></i> Damaged Products</li>
             <li class="nav-item" data-target="reports" onclick="window.switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
+            
+            <li class="nav-item" id="installAppBtn" style="display: none;" onclick="window.installPWA()"><i class="fas fa-download"></i> Install App</li>
         </ul>
     </div>
 
@@ -378,6 +386,50 @@
         let dataState = { inventory: [], sales: [], returns: [], damages: [] };
         let activeEditId = null;
 
+        // PWA Installation Logic
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredPrompt = e;
+            // Update UI to notify the user they can add to home screen
+            const installBtn = document.getElementById('installAppBtn');
+            if(installBtn) installBtn.style.display = 'flex';
+        });
+
+        window.installPWA = async () => {
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                // We no longer need the prompt. Clear it up.
+                deferredPrompt = null;
+                // Hide the button
+                document.getElementById('installAppBtn').style.display = 'none';
+            } else {
+                // Fallback for iOS or browsers that don't support beforeinstallprompt
+                alert("To install this app on your device:\n\nIf on iPhone/iPad: Tap the 'Share' icon at the bottom of Safari and select 'Add to Home Screen'.\n\nIf on a computer: Look for the install icon in the right side of your address bar.");
+            }
+        };
+
+        window.addEventListener('appinstalled', () => {
+            // Hide the app-provided install promotion
+            document.getElementById('installAppBtn').style.display = 'none';
+            deferredPrompt = null;
+            console.log('PWA was installed');
+        });
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                .then(registration => console.log('ServiceWorker registered'))
+                .catch(err => console.log('ServiceWorker registration failed: ', err));
+            });
+        }
+
         // Routing & History Logic
         window.switchTab = (sectionId, clickedElement) => {
             history.pushState(null, null, `#${sectionId}`);
@@ -386,7 +438,7 @@
 
         function activateTab(sectionId, clickedElement = null) {
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.nav-item:not(#installAppBtn)').forEach(item => item.classList.remove('active'));
             
             const targetSection = document.getElementById(sectionId);
             if (targetSection) targetSection.classList.add('active');
@@ -452,7 +504,8 @@
         };
 
         window.updateProductDropdowns = () => {
-            const uniqueTypes = [...new Set(dataState.inventory.map(item => item.type).filter(Boolean))];
+            // Capitalize logic applied to dropdown generator
+            const uniqueTypes = [...new Set(dataState.inventory.map(item => (item.type || '').trim().toUpperCase()).filter(Boolean))];
             
             const selectOptionsHTML = '<option value="" disabled selected>Select Feed Type...</option>' + uniqueTypes.map(type => `<option value="${type}">${type}</option>`).join('');
             const dropdownIds = ['saleType', 'editSaleType', 'returnType', 'editReturnType', 'damageType', 'editDamageType'];
@@ -460,7 +513,7 @@
             dropdownIds.forEach(id => {
                 const el = document.getElementById(id);
                 if(el) {
-                    const currentVal = el.value; 
+                    const currentVal = (el.value || '').trim().toUpperCase(); 
                     el.innerHTML = selectOptionsHTML;
                     if(currentVal && uniqueTypes.includes(currentVal)) {
                         el.value = currentVal;
@@ -479,7 +532,7 @@
             let productStats = {}; 
 
             dataState.inventory.forEach(item => {
-                const type = item.type || 'Unknown';
+                const type = (item.type || 'Unknown').trim().toUpperCase();
                 const qty = Number(item.qty || 0);
                 if(!productStats[type]) productStats[type] = { added: 0, sold: 0, returned: 0, damaged: 0, currentStock: 0 };
                 productStats[type].added += qty;
@@ -488,7 +541,7 @@
             let totalSalesRevenue = 0;
             let totalBagsSold = 0;
             dataState.sales.forEach(item => {
-                const type = item.type || 'Unknown';
+                const type = (item.type || 'Unknown').trim().toUpperCase();
                 const qty = Number(item.qty || 0);
                 const amount = Number(item.amount || 0);
                 totalSalesRevenue += amount;
@@ -499,7 +552,7 @@
 
             let totalReturned = 0, returnedTypes = {};
             dataState.returns.forEach(item => {
-                const type = item.type || 'Unknown';
+                const type = (item.type || 'Unknown').trim().toUpperCase();
                 const qty = Number(item.qty || 0);
                 totalReturned += qty;
                 returnedTypes[type] = (returnedTypes[type] || 0) + qty;
@@ -509,7 +562,7 @@
 
             let totalDamaged = 0, damagedTypes = {};
             dataState.damages.forEach(item => {
-                const type = item.type || 'Unknown';
+                const type = (item.type || 'Unknown').trim().toUpperCase();
                 const qty = Number(item.qty || 0);
                 totalDamaged += qty;
                 damagedTypes[type] = (damagedTypes[type] || 0) + qty;
@@ -517,12 +570,19 @@
                 productStats[type].damaged += qty;
             });
 
+            let totalCurrentStock = 0, lowStockAlerts = 0, lowStockList = [];
             let productCardsHTML = '';
 
-            Object.keys(productStats).forEach(type => {
+            // Sort alphabetically for consistency
+            const sortedTypes = Object.keys(productStats).sort();
+
+            sortedTypes.forEach(type => {
                 const stats = productStats[type];
+                
                 stats.currentStock = stats.added - stats.sold - stats.damaged - stats.returned;
                 if (stats.currentStock < 0) stats.currentStock = 0; 
+
+                totalCurrentStock += stats.currentStock;
 
                 const iconColor = stats.currentStock < 50 ? '#e74c3c' : 'var(--secondary-color)';
                 const bgColor = stats.currentStock < 50 ? '#fceceb' : 'var(--primary-color)';
@@ -540,7 +600,7 @@
             `;
             document.getElementById('productMetrics').innerHTML = productCardsHTML;
 
-            const labels = Object.keys(productStats);
+            const labels = sortedTypes;
             if (labels.length === 0) return; 
 
             const ctx = document.getElementById('salesTrendChart').getContext('2d');
@@ -558,13 +618,16 @@
             });
         }
 
+        // Apply UpperCase Normalization before displaying tables
+        const formatFeedType = (t) => (t || 'Unknown').trim().toUpperCase();
+
         onSnapshot(collection(db, "inventory"), (snapshot) => {
             dataState.inventory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             document.getElementById('inventoryBody').innerHTML = dataState.inventory.map(item => {
                 const price = Number(item.price || 0);
                 const qty = Number(item.qty || 0);
                 const weight = Number(item.weight || 0);
-                const type = item.type || 'Unknown';
+                const type = formatFeedType(item.type);
                 const date = item.date || '-';
                 const totalValue = (qty * price).toLocaleString('en-US', {minimumFractionDigits: 2});
                 return `<tr><td>${type}</td><td>${date}</td><td>${weight}</td><td>${qty} bags</td><td class="status-good">Added</td><td>${price.toFixed(2)}</td><td>${totalValue}</td><td><div class="action-group"><button class="btn btn-icon btn-update" onclick="window.editInventory('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('inventory', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
@@ -580,7 +643,7 @@
                 const date = item.date || '-';
                 const invoice = item.invoice || '-';
                 const customer = item.customer || 'Unknown';
-                const type = item.type || 'Unknown';
+                const type = formatFeedType(item.type);
                 const qty = Number(item.qty || 0);
                 const unitPrice = Number(item.unitPrice || 0);
                 const amount = Number(item.amount || 0);
@@ -594,7 +657,7 @@
             document.getElementById('returnedBody').innerHTML = dataState.returns.map(item => {
                 const date = item.date || '-';
                 const customer = item.customer || 'Unknown';
-                const type = item.type || 'Unknown';
+                const type = formatFeedType(item.type);
                 const qty = Number(item.qty || 0);
                 const reason = item.reason || '-';
                 const condition = item.condition || 'Unknown';
@@ -606,7 +669,7 @@
             dataState.damages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             document.getElementById('damagedBody').innerHTML = dataState.damages.map(item => {
                 const date = item.date || '-';
-                const type = item.type || 'Unknown';
+                const type = formatFeedType(item.type);
                 const qty = Number(item.qty || 0);
                 const location = item.location || '-';
                 const desc = item.desc || '-';
@@ -620,25 +683,29 @@
         // INVENTORY CRUD
         window.submitAddForm = async (e) => {
             e.preventDefault();
-            await addDoc(collection(db, "inventory"), { type: document.getElementById('addType').value, date: document.getElementById('addDate').value, weight: parseInt(document.getElementById('addWeight').value), qty: parseInt(document.getElementById('addQty').value), price: parseFloat(document.getElementById('addPrice').value) });
+            // Force Uppercase on save
+            const typeVal = document.getElementById('addType').value.trim().toUpperCase();
+            await addDoc(collection(db, "inventory"), { type: typeVal, date: document.getElementById('addDate').value, weight: parseInt(document.getElementById('addWeight').value), qty: parseInt(document.getElementById('addQty').value), price: parseFloat(document.getElementById('addPrice').value) });
             window.closeModal('addModal'); e.target.reset();
         };
         window.editInventory = (id) => {
             activeEditId = id; const item = dataState.inventory.find(i => i.id === id);
-            document.getElementById('updType').value = item.type || ''; document.getElementById('updDate').value = item.date || ''; document.getElementById('updQty').value = item.qty || 0; document.getElementById('updPrice').value = item.price || 0; window.openModal('updateModal');
+            document.getElementById('updType').value = formatFeedType(item.type) || ''; document.getElementById('updDate').value = item.date || ''; document.getElementById('updQty').value = item.qty || 0; document.getElementById('updPrice').value = item.price || 0; window.openModal('updateModal');
         };
         window.submitUpdateInvForm = async (e) => {
             e.preventDefault();
-            await updateDoc(doc(db, "inventory", activeEditId), { type: document.getElementById('updType').value, date: document.getElementById('updDate').value, qty: parseInt(document.getElementById('updQty').value), price: parseFloat(document.getElementById('updPrice').value) });
+            const typeVal = document.getElementById('updType').value.trim().toUpperCase();
+            await updateDoc(doc(db, "inventory", activeEditId), { type: typeVal, date: document.getElementById('updDate').value, qty: parseInt(document.getElementById('updQty').value), price: parseFloat(document.getElementById('updPrice').value) });
             window.closeModal('updateModal');
         };
 
         // SALES CRUD
         window.submitAddSaleForm = async (e) => {
             e.preventDefault();
+            const typeVal = document.getElementById('saleType').value.trim().toUpperCase();
             await addDoc(collection(db, "sales"), { 
                 date: document.getElementById('saleDate').value, invoice: document.getElementById('saleInvoice').value, 
-                customer: document.getElementById('saleCustomer').value, type: document.getElementById('saleType').value, 
+                customer: document.getElementById('saleCustomer').value, type: typeVal, 
                 qty: parseInt(document.getElementById('saleQty').value), unitPrice: parseFloat(document.getElementById('saleUnitPrice').value), 
                 amount: parseFloat(document.getElementById('saleAmount').value), status: document.getElementById('saleStatus').value 
             });
@@ -647,7 +714,7 @@
         window.viewSale = (id) => {
             const item = dataState.sales.find(i => i.id === id);
             document.getElementById('viewInvoiceDate').value = `${item.invoice || ''} (Logged: ${item.date || ''})`; 
-            document.getElementById('viewCustomer').value = item.customer || ''; document.getElementById('viewType').value = item.type || ''; 
+            document.getElementById('viewCustomer').value = item.customer || ''; document.getElementById('viewType').value = formatFeedType(item.type) || ''; 
             document.getElementById('viewQty').value = item.qty || 0; document.getElementById('viewUnitPrice').value = Number(item.unitPrice || 0).toLocaleString(undefined, {minimumFractionDigits: 2}); 
             document.getElementById('viewAmount').value = Number(item.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2}); document.getElementById('viewStatus').value = item.status || 'Pending'; 
             window.openModal('viewSaleModal');
@@ -655,16 +722,17 @@
         window.editSale = (id) => {
             activeEditId = id; const item = dataState.sales.find(i => i.id === id);
             document.getElementById('editSaleDate').value = item.date || ''; document.getElementById('editSaleInvoice').value = item.invoice || ''; 
-            document.getElementById('editSaleCustomer').value = item.customer || ''; document.getElementById('editSaleType').value = item.type || ''; 
+            document.getElementById('editSaleCustomer').value = item.customer || ''; document.getElementById('editSaleType').value = formatFeedType(item.type) || ''; 
             document.getElementById('editSaleQty').value = item.qty || 0; document.getElementById('editSaleUnitPrice').value = item.unitPrice || 0; 
             document.getElementById('editSaleAmount').value = item.amount || 0; document.getElementById('editSaleStatus').value = item.status || 'Paid'; 
             window.openModal('editSaleModal');
         };
         window.submitEditSaleForm = async (e) => {
             e.preventDefault();
+            const typeVal = document.getElementById('editSaleType').value.trim().toUpperCase();
             await updateDoc(doc(db, "sales", activeEditId), { 
                 date: document.getElementById('editSaleDate').value, invoice: document.getElementById('editSaleInvoice').value, 
-                customer: document.getElementById('editSaleCustomer').value, type: document.getElementById('editSaleType').value, 
+                customer: document.getElementById('editSaleCustomer').value, type: typeVal, 
                 qty: parseInt(document.getElementById('editSaleQty').value), unitPrice: parseFloat(document.getElementById('editSaleUnitPrice').value), 
                 amount: parseFloat(document.getElementById('editSaleAmount').value), status: document.getElementById('editSaleStatus').value 
             });
@@ -674,44 +742,48 @@
         // RETURN CRUD
         window.submitAddReturnForm = async (e) => {
             e.preventDefault();
-            await addDoc(collection(db, "returned"), { date: document.getElementById('returnDate').value, qty: parseInt(document.getElementById('returnQty').value), customer: document.getElementById('returnCustomer').value, type: document.getElementById('returnType').value, reason: document.getElementById('returnReason').value, condition: document.getElementById('returnCondition').value });
+            const typeVal = document.getElementById('returnType').value.trim().toUpperCase();
+            await addDoc(collection(db, "returned"), { date: document.getElementById('returnDate').value, qty: parseInt(document.getElementById('returnQty').value), customer: document.getElementById('returnCustomer').value, type: typeVal, reason: document.getElementById('returnReason').value, condition: document.getElementById('returnCondition').value });
             window.closeModal('addReturnModal'); e.target.reset();
         };
         window.viewReturn = (id) => {
             const item = dataState.returns.find(i => i.id === id);
-            document.getElementById('viewReturnDate').value = item.date || ''; document.getElementById('viewReturnCustomer').value = item.customer || ''; document.getElementById('viewReturnType').value = item.type || ''; document.getElementById('viewReturnQty').value = item.qty || 0; document.getElementById('viewReturnReason').value = item.reason || ''; document.getElementById('viewReturnCondition').value = item.condition || ''; window.openModal('viewReturnModal');
+            document.getElementById('viewReturnDate').value = item.date || ''; document.getElementById('viewReturnCustomer').value = item.customer || ''; document.getElementById('viewReturnType').value = formatFeedType(item.type) || ''; document.getElementById('viewReturnQty').value = item.qty || 0; document.getElementById('viewReturnReason').value = item.reason || ''; document.getElementById('viewReturnCondition').value = item.condition || ''; window.openModal('viewReturnModal');
         };
         window.editReturn = (id) => {
             activeEditId = id; const item = dataState.returns.find(i => i.id === id);
-            document.getElementById('editReturnDate').value = item.date || ''; document.getElementById('editReturnQty').value = item.qty || 0; document.getElementById('editReturnCustomer').value = item.customer || ''; document.getElementById('editReturnType').value = item.type || ''; document.getElementById('editReturnReason').value = item.reason || ''; document.getElementById('editReturnCondition').value = item.condition || 'Intact / Resalable'; window.openModal('editReturnModal');
+            document.getElementById('editReturnDate').value = item.date || ''; document.getElementById('editReturnQty').value = item.qty || 0; document.getElementById('editReturnCustomer').value = item.customer || ''; document.getElementById('editReturnType').value = formatFeedType(item.type) || ''; document.getElementById('editReturnReason').value = item.reason || ''; document.getElementById('editReturnCondition').value = item.condition || 'Intact / Resalable'; window.openModal('editReturnModal');
         };
         window.submitEditReturnForm = async (e) => {
             e.preventDefault();
-            await updateDoc(doc(db, "returned", activeEditId), { date: document.getElementById('editReturnDate').value, qty: parseInt(document.getElementById('editReturnQty').value), customer: document.getElementById('editReturnCustomer').value, type: document.getElementById('editReturnType').value, reason: document.getElementById('editReturnReason').value, condition: document.getElementById('editReturnCondition').value });
+            const typeVal = document.getElementById('editReturnType').value.trim().toUpperCase();
+            await updateDoc(doc(db, "returned", activeEditId), { date: document.getElementById('editReturnDate').value, qty: parseInt(document.getElementById('editReturnQty').value), customer: document.getElementById('editReturnCustomer').value, type: typeVal, reason: document.getElementById('editReturnReason').value, condition: document.getElementById('editReturnCondition').value });
             window.closeModal('editReturnModal');
         };
 
         // DAMAGE CRUD
         window.submitAddDamageForm = async (e) => {
             e.preventDefault();
-            await addDoc(collection(db, "damaged"), { date: document.getElementById('damageDate').value, qty: parseInt(document.getElementById('damageQty').value), type: document.getElementById('damageType').value, location: document.getElementById('damageLocation').value, desc: document.getElementById('damageDesc').value, loss: parseFloat(document.getElementById('damageLoss').value) });
+            const typeVal = document.getElementById('damageType').value.trim().toUpperCase();
+            await addDoc(collection(db, "damaged"), { date: document.getElementById('damageDate').value, qty: parseInt(document.getElementById('damageQty').value), type: typeVal, location: document.getElementById('damageLocation').value, desc: document.getElementById('damageDesc').value, loss: parseFloat(document.getElementById('damageLoss').value) });
             window.closeModal('addDamageModal'); e.target.reset();
         };
         window.viewDamage = (id) => {
             const item = dataState.damages.find(i => i.id === id);
-            document.getElementById('viewDamageDate').value = item.date || ''; document.getElementById('viewDamageType').value = item.type || ''; document.getElementById('viewDamageQty').value = item.qty || 0; document.getElementById('viewDamageLocation').value = item.location || ''; document.getElementById('viewDamageDesc').value = item.desc || ''; document.getElementById('viewDamageLoss').value = Number(item.loss || 0).toLocaleString(undefined, {minimumFractionDigits: 2}); window.openModal('viewDamageModal');
+            document.getElementById('viewDamageDate').value = item.date || ''; document.getElementById('viewDamageType').value = formatFeedType(item.type) || ''; document.getElementById('viewDamageQty').value = item.qty || 0; document.getElementById('viewDamageLocation').value = item.location || ''; document.getElementById('viewDamageDesc').value = item.desc || ''; document.getElementById('viewDamageLoss').value = Number(item.loss || 0).toLocaleString(undefined, {minimumFractionDigits: 2}); window.openModal('viewDamageModal');
         };
         window.editDamage = (id) => {
             activeEditId = id; const item = dataState.damages.find(i => i.id === id);
-            document.getElementById('editDamageDate').value = item.date || ''; document.getElementById('editDamageQty').value = item.qty || 0; document.getElementById('editDamageType').value = item.type || ''; document.getElementById('editDamageLocation').value = item.location || ''; document.getElementById('editDamageDesc').value = item.desc || ''; document.getElementById('editDamageLoss').value = item.loss || 0; window.openModal('editDamageModal');
+            document.getElementById('editDamageDate').value = item.date || ''; document.getElementById('editDamageQty').value = item.qty || 0; document.getElementById('editDamageType').value = formatFeedType(item.type) || ''; document.getElementById('editDamageLocation').value = item.location || ''; document.getElementById('editDamageDesc').value = item.desc || ''; document.getElementById('editDamageLoss').value = item.loss || 0; window.openModal('editDamageModal');
         };
         window.submitEditDamageForm = async (e) => {
             e.preventDefault();
-            await updateDoc(doc(db, "damaged", activeEditId), { date: document.getElementById('editDamageDate').value, qty: parseInt(document.getElementById('editDamageQty').value), type: document.getElementById('editDamageType').value, location: document.getElementById('editDamageLocation').value, desc: document.getElementById('editDamageDesc').value, loss: parseFloat(document.getElementById('editDamageLoss').value) });
+            const typeVal = document.getElementById('editDamageType').value.trim().toUpperCase();
+            await updateDoc(doc(db, "damaged", activeEditId), { date: document.getElementById('editDamageDate').value, qty: parseInt(document.getElementById('editDamageQty').value), type: typeVal, location: document.getElementById('editDamageLocation').value, desc: document.getElementById('editDamageDesc').value, loss: parseFloat(document.getElementById('editDamageLoss').value) });
             window.closeModal('editDamageModal');
         };
 
-        // UPDATED REPORT ENGINE
+        // REPORT ENGINE
         window.generateReportPreview = () => {
             const monthVal = document.getElementById('reportMonthFilter').value;
             if (!monthVal) { alert("Select a month."); return; }
@@ -722,8 +794,9 @@
             let reportDict = {};
             
             const getRow = (t) => { 
-                if(!reportDict[t]) reportDict[t] = { type: t, inv: 0, sold: 0, ret: 0, dam: 0, amt: 0 }; 
-                return reportDict[t]; 
+                const normalizedType = formatFeedType(t);
+                if(!reportDict[normalizedType]) reportDict[normalizedType] = { type: normalizedType, inv: 0, sold: 0, ret: 0, dam: 0, amt: 0 }; 
+                return reportDict[normalizedType]; 
             };
 
             dataState.inventory.forEach(i => {
@@ -753,7 +826,7 @@
             });
 
             let html = '', tInv=0, tSold=0, tRet=0, tDam=0, tAmt=0, tRemain=0;
-            const rows = Object.values(reportDict);
+            const rows = Object.values(reportDict).sort((a, b) => a.type.localeCompare(b.type)); // Sort Alphabetically
 
             if (rows.length === 0) {
                 html = `<tr><td colspan="8" style="text-align:center; padding:20px;">No data recorded for ${prettyMonth}</td></tr>`;
@@ -787,7 +860,6 @@
             document.getElementById('reportPreviewArea').style.display = 'block';
         };
 
-        // NEW: CSV DOWNLOAD FUNCTION
         window.downloadCSVReport = () => {
             const title = document.getElementById('previewMonthTitle').innerText;
             if (!title) { alert("Please generate a report preview first."); return; }
@@ -804,14 +876,12 @@
             rows.forEach(row => {
                 let rowData = [];
                 for (let i = 0; i < row.cells.length; i++) {
-                    // Grab text, remove commas so it doesn't break the CSV format, and wrap in quotes
                     let cellText = row.cells[i].innerText.replace(/,/g, ''); 
                     rowData.push(`"${cellText}"`);
                 }
                 csvContent += rowData.join(",") + "\n";
             });
 
-            // Trigger the browser download
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
@@ -824,16 +894,6 @@
             link.click();
             document.body.removeChild(link);
         };
-    </script>
-</body>
-<script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                .then(registration => console.log('ServiceWorker registered'))
-                .catch(err => console.log('ServiceWorker failed: ', err));
-            });
-        }
     </script>
 </body>
 </html>
