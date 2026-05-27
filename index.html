@@ -116,8 +116,8 @@
             <li class="nav-item" data-target="sales" onclick="window.switchTab('sales', this)"><i class="fas fa-cash-register"></i> Sales Management</li>
             <li class="nav-item" data-target="returned" onclick="window.switchTab('returned', this)"><i class="fas fa-undo-alt"></i> Returned Products</li>
             <li class="nav-item" data-target="damaged" onclick="window.switchTab('damaged', this)"><i class="fas fa-heart-broken"></i> Damaged Products</li>
+            <li class="nav-item" data-target="bank" onclick="window.switchTab('bank', this)"><i class="fas fa-university"></i> Bank Transactions</li>
             <li class="nav-item" data-target="reports" onclick="window.switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
-            
             <li class="nav-item" id="installAppBtn" style="display: none;" onclick="window.installPWA()"><i class="fas fa-download"></i> Install App</li>
         </ul>
     </div>
@@ -215,6 +215,24 @@
                 </div>
             </div>
 
+            <div id="bank" class="section">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1>Bank Transactions</h1>
+                    <button class="btn" onclick="window.openModal('addBankModal')"><i class="fas fa-plus"></i> Record Transaction</button>
+                </div>
+                <div class="filter-bar">
+                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="bankSearchInput" onkeyup="window.filterTable('bankSearchInput', 'bankMonthFilter', 'bankBody')" placeholder="Search by Description or Check #..." style="padding-left: 35px;"></div>
+                    <div style="flex: 1;"><input type="month" id="bankMonthFilter" onchange="window.filterTable('bankSearchInput', 'bankMonthFilter', 'bankBody')"></div>
+                    <div><button class="btn btn-update" onclick="window.resetFilters('bankSearchInput', 'bankMonthFilter', 'bankBody')" style="width:100%;">Clear Filters</button></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Date</th><th>Type</th><th>Ref / Check #</th><th>Description</th><th>Amount (GHS)</th><th>Action</th></tr></thead>
+                        <tbody id="bankBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <div id="reports" class="section">
                 <h1>Consolidated Monthly Report</h1>
                 <div class="card" style="flex-direction: column; align-items: flex-start; gap: 15px; margin-top: 15px; padding: 25px;">
@@ -248,6 +266,48 @@
             </div>
 
         </div> </div> <datalist id="feedTypeList"></datalist>
+
+    <div id="addBankModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addBankModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Record Bank Transaction</h2>
+        <form onsubmit="window.submitAddBankForm(event)">
+            <div class="form-row">
+                <div class="form-group"><label>Date</label><input type="date" id="bankDate" required></div>
+                <div class="form-group"><label>Transaction Type</label><select id="bankType" required><option value="Deposit">Deposit (Income)</option><option value="Withdrawal">Withdrawal (Expense)</option></select></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Reference / Check #</label><input type="text" id="bankRef" placeholder="Optional"></div>
+                <div class="form-group"><label>Amount (GHS)</label><input type="number" id="bankAmount" step="0.01" required></div>
+            </div>
+            <div class="form-group"><label>Description / Notes</label><input type="text" id="bankDesc" required placeholder="What was this for?"></div>
+            <button type="submit" class="btn" style="width: 100%;">Save Transaction</button>
+        </form>
+    </div></div>
+
+    <div id="editBankModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editBankModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Bank Transaction</h2>
+        <form onsubmit="window.submitEditBankForm(event)">
+            <div class="form-row">
+                <div class="form-group"><label>Date</label><input type="date" id="editBankDate" required></div>
+                <div class="form-group"><label>Transaction Type</label><select id="editBankType" required><option value="Deposit">Deposit (Income)</option><option value="Withdrawal">Withdrawal (Expense)</option></select></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Reference / Check #</label><input type="text" id="editBankRef"></div>
+                <div class="form-group"><label>Amount (GHS)</label><input type="number" id="editBankAmount" step="0.01" required></div>
+            </div>
+            <div class="form-group"><label>Description / Notes</label><input type="text" id="editBankDesc" required></div>
+            <button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
+        </form>
+    </div></div>
+
+    <div id="viewBankModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewBankModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Transaction Details</h2>
+        <div class="form-row">
+            <div class="form-group"><label>Date</label><input type="text" id="viewBankDate" disabled></div>
+            <div class="form-group"><label>Type</label><input type="text" id="viewBankType" disabled></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Reference / Check #</label><input type="text" id="viewBankRef" disabled></div>
+            <div class="form-group"><label>Amount (GHS)</label><input type="text" id="viewBankAmount" disabled></div>
+        </div>
+        <div class="form-group"><label>Description</label><input type="text" id="viewBankDesc" disabled></div>
+    </div></div>
 
     <div id="addSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Record New Sale</h2>
         <form onsubmit="window.submitAddSaleForm(event)">
@@ -383,50 +443,40 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        let dataState = { inventory: [], sales: [], returns: [], damages: [] };
+        let dataState = { inventory: [], sales: [], returns: [], damages: [], bank: [] };
         let activeEditId = null;
 
         // PWA Installation Logic
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent Chrome 67 and earlier from automatically showing the prompt
             e.preventDefault();
-            // Stash the event so it can be triggered later.
             deferredPrompt = e;
-            // Update UI to notify the user they can add to home screen
             const installBtn = document.getElementById('installAppBtn');
             if(installBtn) installBtn.style.display = 'flex';
         });
 
         window.installPWA = async () => {
             if (deferredPrompt) {
-                // Show the install prompt
                 deferredPrompt.prompt();
-                // Wait for the user to respond to the prompt
                 const { outcome } = await deferredPrompt.userChoice;
-                // We no longer need the prompt. Clear it up.
                 deferredPrompt = null;
-                // Hide the button
                 document.getElementById('installAppBtn').style.display = 'none';
             } else {
-                // Fallback for iOS or browsers that don't support beforeinstallprompt
                 alert("To install this app on your device:\n\nIf on iPhone/iPad: Tap the 'Share' icon at the bottom of Safari and select 'Add to Home Screen'.\n\nIf on a computer: Look for the install icon in the right side of your address bar.");
             }
         };
 
         window.addEventListener('appinstalled', () => {
-            // Hide the app-provided install promotion
             document.getElementById('installAppBtn').style.display = 'none';
             deferredPrompt = null;
             console.log('PWA was installed');
         });
 
-        // Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
+                navigator.serviceWorker.register('./sw.js')
                 .then(registration => console.log('ServiceWorker registered'))
-                .catch(err => console.log('ServiceWorker registration failed: ', err));
+                .catch(err => console.error('ServiceWorker registration failed: ', err));
             });
         }
 
@@ -469,7 +519,6 @@
             }
         });
 
-
         window.toggleSidebar = () => {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -504,7 +553,6 @@
         };
 
         window.updateProductDropdowns = () => {
-            // Capitalize logic applied to dropdown generator
             const uniqueTypes = [...new Set(dataState.inventory.map(item => (item.type || '').trim().toUpperCase()).filter(Boolean))];
             
             const selectOptionsHTML = '<option value="" disabled selected>Select Feed Type...</option>' + uniqueTypes.map(type => `<option value="${type}">${type}</option>`).join('');
@@ -570,10 +618,15 @@
                 productStats[type].damaged += qty;
             });
 
+            let bankBalance = 0;
+            dataState.bank.forEach(item => {
+                if(item.type === 'Deposit') bankBalance += Number(item.amount || 0);
+                else bankBalance -= Number(item.amount || 0);
+            });
+
             let totalCurrentStock = 0, lowStockAlerts = 0, lowStockList = [];
             let productCardsHTML = '';
 
-            // Sort alphabetically for consistency
             const sortedTypes = Object.keys(productStats).sort();
 
             sortedTypes.forEach(type => {
@@ -594,6 +647,7 @@
 
             document.getElementById('mainMetrics').innerHTML = `
                 <div class="card"><i class="fas fa-chart-line card-icon" style="color: #27ae60; background: #e9f7ef;"></i><div class="card-info"><h3>Total Revenue</h3><p>GHS ${totalSalesRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}</p></div></div>
+                <div class="card"><i class="fas fa-university card-icon" style="color: #8e44ad; background: #f4ecf7;"></i><div class="card-info"><h3>Bank Balance</h3><p style="color: ${bankBalance < 0 ? '#e74c3c' : 'var(--primary-color)'}">GHS ${bankBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</p></div></div>
                 <div class="card"><i class="fas fa-cash-register card-icon" style="color: #3498db; background: #eaf2f8;"></i><div class="card-info"><h3>Total Bags Sold</h3><p>${totalBagsSold.toLocaleString()} bags</p></div></div>
                 <div class="card"><i class="fas fa-undo-alt card-icon" style="color: #3498db; background: #eaf2f8;"></i><div class="card-info"><h3>Returned Products</h3><p>${totalReturned.toLocaleString()} bags</p><span class="card-details">${retDetails}</span></div></div>
                 <div class="card"><i class="fas fa-heart-broken card-icon" style="color: #e74c3c; background: #fceceb;"></i><div class="card-info"><h3>Damaged Products</h3><p>${totalDamaged.toLocaleString()} bags</p><span class="card-details">${damDetails}</span></div></div>
@@ -618,7 +672,6 @@
             });
         }
 
-        // Apply UpperCase Normalization before displaying tables
         const formatFeedType = (t) => (t || 'Unknown').trim().toUpperCase();
 
         onSnapshot(collection(db, "inventory"), (snapshot) => {
@@ -678,12 +731,25 @@
             }).join(''); updateDashboard();
         }, (error) => console.error("Damages Sync Error: ", error));
 
+        onSnapshot(collection(db, "bank"), (snapshot) => {
+            dataState.bank = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            document.getElementById('bankBody').innerHTML = dataState.bank.map(item => {
+                const date = item.date || '-';
+                const type = item.type || 'Deposit';
+                const ref = item.ref || '-';
+                const desc = item.desc || '-';
+                const amt = Number(item.amount || 0);
+                const typeStyle = type === 'Deposit' ? 'status-good' : 'status-low';
+                return `<tr><td>${date}</td><td class="${typeStyle}">${type}</td><td>${ref}</td><td>${desc}</td><td>${amt.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewBank('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editBank('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('bank', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
+            }).join(''); 
+            updateDashboard();
+        }, (error) => console.error("Bank Sync Error: ", error));
+
         window.deleteRecord = async (colName, id) => { if (confirm(`Delete this record from ${colName}?`)) await deleteDoc(doc(db, colName, id)); };
 
         // INVENTORY CRUD
         window.submitAddForm = async (e) => {
             e.preventDefault();
-            // Force Uppercase on save
             const typeVal = document.getElementById('addType').value.trim().toUpperCase();
             await addDoc(collection(db, "inventory"), { type: typeVal, date: document.getElementById('addDate').value, weight: parseInt(document.getElementById('addWeight').value), qty: parseInt(document.getElementById('addQty').value), price: parseFloat(document.getElementById('addPrice').value) });
             window.closeModal('addModal'); e.target.reset();
@@ -783,6 +849,49 @@
             window.closeModal('editDamageModal');
         };
 
+        // BANK CRUD
+        window.submitAddBankForm = async (e) => {
+            e.preventDefault();
+            await addDoc(collection(db, "bank"), { 
+                date: document.getElementById('bankDate').value, 
+                type: document.getElementById('bankType').value, 
+                ref: document.getElementById('bankRef').value, 
+                desc: document.getElementById('bankDesc').value, 
+                amount: parseFloat(document.getElementById('bankAmount').value) 
+            });
+            window.closeModal('addBankModal'); e.target.reset();
+        };
+        window.viewBank = (id) => {
+            const item = dataState.bank.find(i => i.id === id);
+            document.getElementById('viewBankDate').value = item.date || ''; 
+            document.getElementById('viewBankType').value = item.type || ''; 
+            document.getElementById('viewBankRef').value = item.ref || 'N/A'; 
+            document.getElementById('viewBankDesc').value = item.desc || ''; 
+            document.getElementById('viewBankAmount').value = Number(item.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2}); 
+            window.openModal('viewBankModal');
+        };
+        window.editBank = (id) => {
+            activeEditId = id; const item = dataState.bank.find(i => i.id === id);
+            document.getElementById('editBankDate').value = item.date || ''; 
+            document.getElementById('editBankType').value = item.type || 'Deposit'; 
+            document.getElementById('editBankRef').value = item.ref || ''; 
+            document.getElementById('editBankDesc').value = item.desc || ''; 
+            document.getElementById('editBankAmount').value = item.amount || 0; 
+            window.openModal('editBankModal');
+        };
+        window.submitEditBankForm = async (e) => {
+            e.preventDefault();
+            await updateDoc(doc(db, "bank", activeEditId), { 
+                date: document.getElementById('editBankDate').value, 
+                type: document.getElementById('editBankType').value, 
+                ref: document.getElementById('editBankRef').value, 
+                desc: document.getElementById('editBankDesc').value, 
+                amount: parseFloat(document.getElementById('editBankAmount').value) 
+            });
+            window.closeModal('editBankModal');
+        };
+
+
         // REPORT ENGINE
         window.generateReportPreview = () => {
             const monthVal = document.getElementById('reportMonthFilter').value;
@@ -800,28 +909,29 @@
             };
 
             dataState.inventory.forEach(i => {
-                if ((i.date || '').startsWith(monthVal)) {
-                    getRow(i.type).inv += Number(i.qty || 0);
-                }
+                if ((i.date || '').startsWith(monthVal)) { getRow(i.type).inv += Number(i.qty || 0); }
             });
 
             dataState.sales.forEach(i => {
                 if ((i.date || '').startsWith(monthVal)) {
                     let r = getRow(i.type);
-                    r.sold += Number(i.qty || 0);
-                    r.amt += Number(i.amount || 0);
+                    r.sold += Number(i.qty || 0); r.amt += Number(i.amount || 0);
                 }
             });
 
             dataState.returns.forEach(i => {
-                if ((i.date || '').startsWith(monthVal)) {
-                    getRow(i.type).ret += Number(i.qty || 0);
-                }
+                if ((i.date || '').startsWith(monthVal)) { getRow(i.type).ret += Number(i.qty || 0); }
             });
 
             dataState.damages.forEach(i => {
-                if ((i.date || '').startsWith(monthVal)) {
-                    getRow(i.type).dam += Number(i.qty || 0);
+                if ((i.date || '').startsWith(monthVal)) { getRow(i.type).dam += Number(i.qty || 0); }
+            });
+
+            // Calculate Monthly Bank Deposits
+            let monthlyDeposits = 0;
+            dataState.bank.forEach(i => {
+                if ((i.date || '').startsWith(monthVal) && i.type === 'Deposit') {
+                    monthlyDeposits += Number(i.amount || 0);
                 }
             });
 
@@ -846,6 +956,9 @@
                         <td>GHS ${r.amt.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
                     </tr>`;
                 });
+                
+                const monthlyBalance = tAmt - monthlyDeposits;
+
                 html += `<tr style="background:var(--primary-color);color:white;font-weight:bold;">
                     <td colspan="2" align="right">MONTHLY TOTALS:</td>
                     <td>${tInv}</td>
@@ -854,6 +967,14 @@
                     <td>${tRet}</td>
                     <td>${tRemain}</td>
                     <td>GHS ${tAmt.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                </tr>`;
+                html += `<tr style="background:#eaf2f8; color:#333; font-weight:bold;">
+                    <td colspan="7" align="right">TOTAL BANK DEPOSITS:</td>
+                    <td>GHS ${monthlyDeposits.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                </tr>`;
+                html += `<tr style="background:${monthlyBalance < 0 ? '#fceceb' : '#e9f7ef'}; color:${monthlyBalance < 0 ? '#e74c3c' : '#27ae60'}; font-weight:bold;">
+                    <td colspan="7" align="right">CASH BALANCE (Sales - Deposits):</td>
+                    <td>GHS ${monthlyBalance.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
                 </tr>`;
             }
             document.getElementById('reportPreviewBody').innerHTML = html; 
@@ -867,17 +988,24 @@
             const table = document.getElementById('reportTable');
             const rows = table.querySelectorAll('tr');
             
-            if (rows.length <= 1) { 
-                alert("No data available to download."); 
-                return; 
-            }
+            if (rows.length <= 1) { alert("No data available to download."); return; }
 
             let csvContent = "";
             rows.forEach(row => {
                 let rowData = [];
                 for (let i = 0; i < row.cells.length; i++) {
                     let cellText = row.cells[i].innerText.replace(/,/g, ''); 
-                    rowData.push(`"${cellText}"`);
+                    
+                    // Handle colspan for summary rows in CSV
+                    let colspan = row.cells[i].getAttribute('colspan');
+                    if (colspan && parseInt(colspan) > 1) {
+                        rowData.push(`"${cellText}"`);
+                        for(let c = 1; c < parseInt(colspan); c++) {
+                            rowData.push(`""`); // Add empty commas to push the value to the right column
+                        }
+                    } else {
+                        rowData.push(`"${cellText}"`);
+                    }
                 }
                 csvContent += rowData.join(",") + "\n";
             });
