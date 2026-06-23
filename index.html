@@ -15,8 +15,20 @@
     <style>
         :root { --primary-color: #1e4620; --secondary-color: #f1c40f; --bg-color: #f4f7f6; --text-color: #333; --sidebar-hover: #2a5a2d; }
         * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-color); overflow: hidden;}
+        /* Removed 'display: flex' from body so the appContainer handles it securely */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; height: 100vh; background-color: var(--bg-color); color: var(--text-color); overflow: hidden;}
         
+        /* --- LOGIN SCREEN STYLES --- */
+        #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--primary-color); display: flex; justify-content: center; align-items: center; z-index: 10000; }
+        .login-card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 100%; max-width: 400px; text-align: center; }
+        .login-card img { max-width: 150px; margin-bottom: 20px; background: var(--primary-color); padding: 10px; border-radius: 8px;}
+        .login-card h2 { color: var(--primary-color); margin-top: 0; margin-bottom: 25px; }
+        .login-card .form-group { text-align: left; margin-bottom: 20px; }
+        .error-message { color: #e74c3c; font-size: 14px; margin-bottom: 15px; display: none; background: #fceceb; padding: 10px; border-radius: 4px; }
+        
+        /* --- SECURE APP CONTAINER --- */
+        #appContainer { display: none; height: 100vh; width: 100%; flex-direction: row; overflow: hidden; }
+
         /* Sidebar Styles */
         .sidebar { width: 260px; background-color: var(--primary-color); color: white; display: flex; flex-direction: column; box-shadow: 2px 0 5px rgba(0,0,0,0.1); height: 100%; z-index: 2000; transition: transform 0.3s ease; }
         .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1500; }
@@ -28,9 +40,11 @@
         .nav-item:hover, .nav-item.active { background-color: var(--sidebar-hover); border-left: 4px solid var(--secondary-color); }
         .nav-item.active { font-weight: bold; color: var(--secondary-color); }
         
-        /* Custom Install Button Styling */
+        /* Logout & Install Buttons */
         #installAppBtn { margin: 20px 15px; padding: 12px; background-color: #27ae60; color: white; border-radius: 8px; justify-content: center; font-weight: bold; border-left: none; transition: transform 0.2s;}
         #installAppBtn:hover { background-color: #219653; transform: scale(1.02); }
+        .logout-btn { margin-top: auto; border-top: 1px solid #2a5a2d; background-color: #153216; }
+        .logout-btn:hover { background-color: #e74c3c !important; border-left: 4px solid #c0392b !important; }
 
         /* Main Layout */
         .main-wrapper { flex: 1; display: flex; flex-direction: column; height: 100vh; width: 100%; overflow: hidden; }
@@ -84,7 +98,7 @@
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* ================= MOBILE RESPONSIVE MEDIA QUERIES ================= */
+        /* Responsive Media Queries */
         @media (max-width: 768px) {
             .sidebar { position: fixed; left: -260px; transition: left 0.3s ease; }
             .sidebar.show { left: 0; transform: translateX(0); }
@@ -104,332 +118,359 @@
 </head>
 <body>
 
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="window.toggleSidebar()"></div>
-
-    <div class="sidebar" id="sidebar">
-        <div class="brand">
+    <div id="loginScreen">
+        <div class="login-card">
             <img src="logo.png" alt="Boris B Farms">
+            <h2>Admin Login</h2>
+            <div class="error-message" id="loginError"></div>
+            <form onsubmit="window.handleLogin(event)">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="loginEmail" required placeholder="admin@borisbfarms.com">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-update" style="width: 100%; padding: 12px; font-size: 16px;">Secure Login</button>
+            </form>
         </div>
-        <ul class="nav-links">
-            <li class="nav-item active" data-target="dashboard" onclick="window.switchTab('dashboard', this)"><i class="fas fa-chart-line"></i> Dashboard</li>
-            <li class="nav-item" data-target="inventory" onclick="window.switchTab('inventory', this)"><i class="fas fa-boxes"></i> Inventory Management</li>
-            <li class="nav-item" data-target="sales" onclick="window.switchTab('sales', this)"><i class="fas fa-cash-register"></i> Sales Management</li>
-            <li class="nav-item" data-target="returned" onclick="window.switchTab('returned', this)"><i class="fas fa-undo-alt"></i> Returned Products</li>
-            <li class="nav-item" data-target="damaged" onclick="window.switchTab('damaged', this)"><i class="fas fa-heart-broken"></i> Damaged Products</li>
-            <li class="nav-item" data-target="bank" onclick="window.switchTab('bank', this)"><i class="fas fa-university"></i> Bank Transactions</li>
-            <li class="nav-item" data-target="reports" onclick="window.switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
-            <li class="nav-item" id="installAppBtn" style="display: none;" onclick="window.installPWA()"><i class="fas fa-download"></i> Install App</li>
-        </ul>
     </div>
 
-    <div class="main-wrapper">
+    <div id="appContainer">
         
-        <div class="mobile-header">
-            <img src="logo.png" alt="Boris B Farms">
-            <button onclick="window.toggleSidebar()"><i class="fas fa-bars"></i></button>
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="window.toggleSidebar()"></div>
+
+        <div class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="logo.png" alt="Boris B Farms">
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item active" data-target="dashboard" onclick="window.switchTab('dashboard', this)"><i class="fas fa-chart-line"></i> Dashboard</li>
+                <li class="nav-item" data-target="inventory" onclick="window.switchTab('inventory', this)"><i class="fas fa-boxes"></i> Inventory Management</li>
+                <li class="nav-item" data-target="sales" onclick="window.switchTab('sales', this)"><i class="fas fa-cash-register"></i> Sales Management</li>
+                <li class="nav-item" data-target="returned" onclick="window.switchTab('returned', this)"><i class="fas fa-undo-alt"></i> Returned Products</li>
+                <li class="nav-item" data-target="damaged" onclick="window.switchTab('damaged', this)"><i class="fas fa-heart-broken"></i> Damaged Products</li>
+                <li class="nav-item" data-target="bank" onclick="window.switchTab('bank', this)"><i class="fas fa-university"></i> Bank Transactions</li>
+                <li class="nav-item" data-target="reports" onclick="window.switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
+                <li class="nav-item" id="installAppBtn" style="display: none;" onclick="window.installPWA()"><i class="fas fa-download"></i> Install App</li>
+                
+                <li class="nav-item logout-btn" onclick="window.handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</li>
+            </ul>
         </div>
 
-        <div class="main-content" id="mainContent">
+        <div class="main-wrapper">
             
-            <div id="dashboard" class="section active">
-                <h1>Overview Dashboard</h1>
-                <div class="dashboard-grid" id="mainMetrics">
-                    <p style="color: #666; font-style: italic;">Connecting to database network...</p>
-                </div>
+            <div class="mobile-header">
+                <img src="logo.png" alt="Boris B Farms">
+                <button onclick="window.toggleSidebar()"><i class="fas fa-bars"></i></button>
+            </div>
+
+            <div class="main-content" id="mainContent">
                 
-                <h2 style="margin-top: 20px;">Product Quantities (In Stock)</h2>
-                <div class="dashboard-grid" id="productMetrics"></div>
-
-                <div class="chart-container"><canvas id="salesTrendChart"></canvas></div>
-            </div>
-
-            <div id="inventory" class="section">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1>Inventory Management</h1>
-                    <button class="btn" onclick="window.openModal('addModal')"><i class="fas fa-plus"></i> Add New Stock</button>
-                </div>
-                <div class="filter-bar">
-                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="invSearchInput" onkeyup="window.filterTable('invSearchInput', 'invMonthFilter', 'inventoryBody')" placeholder="Search by Feed Type..." style="padding-left: 35px;"></div>
-                    <div style="flex: 1;"><input type="month" id="invMonthFilter" onchange="window.filterTable('invSearchInput', 'invMonthFilter', 'inventoryBody')"></div>
-                    <div><button class="btn btn-update" onclick="window.resetFilters('invSearchInput', 'invMonthFilter', 'inventoryBody')" style="width:100%;">Clear Filters</button></div>
-                </div>
-                <div class="table-responsive">
-                    <table class="data-table" id="inventoryTable">
-                        <thead><tr><th>Feed Type</th><th>Date Received</th><th>Weight (kg)</th><th>Qty (Bags)</th><th>Status</th><th>Unit Price (GHS)</th><th>Total Price (GHS)</th><th>Action</th></tr></thead>
-                        <tbody id="inventoryBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="sales" class="section">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1>Sales Management</h1>
-                    <button class="btn" onclick="window.openModal('addSaleModal')"><i class="fas fa-plus"></i> Record New Sale</button>
-                </div>
-                <div class="filter-bar">
-                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="salesSearchInput" onkeyup="window.filterTable('salesSearchInput', 'salesMonthFilter', 'salesBody')" placeholder="Search by Invoice, Customer, or Feed..." style="padding-left: 35px;"></div>
-                    <div style="flex: 1;"><input type="month" id="salesMonthFilter" onchange="window.filterTable('salesSearchInput', 'salesMonthFilter', 'salesBody')" title="Filter by Month"></div>
-                    <div><button class="btn btn-update" onclick="window.resetFilters('salesSearchInput', 'salesMonthFilter', 'salesBody')" style="width:100%;">Clear Filters</button></div>
-                </div>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead><tr><th>Date</th><th>Invoice #</th><th>Customer Name</th><th>Feed Type</th><th>Qty (Bags)</th><th>Unit Price (GHS)</th><th>Total Amount (GHS)</th><th>Status</th><th>Action</th></tr></thead>
-                        <tbody id="salesBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="returned" class="section">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1>Returned Products</h1>
-                    <button class="btn" onclick="window.openModal('addReturnModal')"><i class="fas fa-plus"></i> Log Return</button>
-                </div>
-                <div class="filter-bar">
-                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="returnSearchInput" onkeyup="window.filterTable('returnSearchInput', 'returnMonthFilter', 'returnedBody')" placeholder="Search Customer, Feed, Reason..." style="padding-left: 35px;"></div>
-                    <div style="flex: 1;"><input type="month" id="returnMonthFilter" onchange="window.filterTable('returnSearchInput', 'returnMonthFilter', 'returnedBody')"></div>
-                    <div><button class="btn btn-update" onclick="window.resetFilters('returnSearchInput', 'returnMonthFilter', 'returnedBody')" style="width:100%;">Clear Filters</button></div>
-                </div>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead><tr><th>Date Logged</th><th>Customer</th><th>Feed Type</th><th>Qty (Bags)</th><th>Reason for Return</th><th>Condition</th><th>Action</th></tr></thead>
-                        <tbody id="returnedBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="damaged" class="section">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1>Damaged Products</h1>
-                    <button class="btn" onclick="window.openModal('addDamageModal')"><i class="fas fa-plus"></i> Report Damage</button>
-                </div>
-                <div class="filter-bar">
-                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="damageSearchInput" onkeyup="window.filterTable('damageSearchInput', 'damageMonthFilter', 'damagedBody')" placeholder="Search Feed, Location, Description..." style="padding-left: 35px;"></div>
-                    <div style="flex: 1;"><input type="month" id="damageMonthFilter" onchange="window.filterTable('damageSearchInput', 'damageMonthFilter', 'damagedBody')"></div>
-                    <div><button class="btn btn-update" onclick="window.resetFilters('damageSearchInput', 'damageMonthFilter', 'damagedBody')" style="width:100%;">Clear Filters</button></div>
-                </div>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead><tr><th>Date Reported</th><th>Feed Type</th><th>Qty (Bags)</th><th>Source Location</th><th>Damage Description</th><th>Loss (GHS)</th><th>Action</th></tr></thead>
-                        <tbody id="damagedBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="bank" class="section">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1>Bank Transactions</h1>
-                    <button class="btn" onclick="window.openModal('addBankModal')"><i class="fas fa-plus"></i> Record Transaction</button>
-                </div>
-                <div class="filter-bar">
-                    <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="bankSearchInput" onkeyup="window.filterTable('bankSearchInput', 'bankMonthFilter', 'bankBody')" placeholder="Search by Description or Check #..." style="padding-left: 35px;"></div>
-                    <div style="flex: 1;"><input type="month" id="bankMonthFilter" onchange="window.filterTable('bankSearchInput', 'bankMonthFilter', 'bankBody')"></div>
-                    <div><button class="btn btn-update" onclick="window.resetFilters('bankSearchInput', 'bankMonthFilter', 'bankBody')" style="width:100%;">Clear Filters</button></div>
-                </div>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead><tr><th>Date</th><th>Type</th><th>Ref / Check #</th><th>Description</th><th>Amount (GHS)</th><th>Action</th></tr></thead>
-                        <tbody id="bankBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="reports" class="section">
-                <h1>Consolidated Monthly Report</h1>
-                <div class="card" style="flex-direction: column; align-items: flex-start; gap: 15px; margin-top: 15px; padding: 25px;">
-                    <h3 style="margin:0; color: var(--primary-color); font-size: 18px;"><i class="fas fa-calendar-alt"></i> Report Parameters</h3>
-                    <div class="form-row" style="width: 100%; margin-top: 10px; align-items: flex-end;">
-                        <div class="form-group" style="flex: 1; margin: 0;"><label>Select Month</label><input type="month" id="reportMonthFilter"></div>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button class="btn btn-update" onclick="window.generateReportPreview()"><i class="fas fa-search"></i> Generate Report</button>
-                            <button class="btn btn-success" onclick="window.downloadCSVReport()"><i class="fas fa-file-csv"></i> Download CSV</button>
-                        </div>
+                <div id="dashboard" class="section active">
+                    <h1>Overview Dashboard</h1>
+                    <div class="dashboard-grid" id="mainMetrics">
+                        <p style="color: #666; font-style: italic;">Connecting to database network...</p>
                     </div>
+                    
+                    <h2 style="margin-top: 20px;">Product Quantities (In Stock)</h2>
+                    <div class="dashboard-grid" id="productMetrics"></div>
+
+                    <div class="chart-container"><canvas id="salesTrendChart"></canvas></div>
                 </div>
-                <div id="reportPreviewArea" style="display: none; margin-top: 35px; animation: fadeIn 0.4s ease-in-out;">
-                    <h2 style="border-bottom: 2px solid var(--secondary-color); padding-bottom: 10px; color: var(--primary-color);">Report For: <span id="previewMonthTitle"></span></h2>
+
+                <div id="inventory" class="section">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h1>Inventory Management</h1>
+                        <button class="btn" onclick="window.openModal('addModal')"><i class="fas fa-plus"></i> Add New Stock</button>
+                    </div>
+                    <div class="filter-bar">
+                        <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="invSearchInput" onkeyup="window.filterTable('invSearchInput', 'invMonthFilter', 'inventoryBody')" placeholder="Search by Feed Type..." style="padding-left: 35px;"></div>
+                        <div style="flex: 1;"><input type="month" id="invMonthFilter" onchange="window.filterTable('invSearchInput', 'invMonthFilter', 'inventoryBody')"></div>
+                        <div><button class="btn btn-update" onclick="window.resetFilters('invSearchInput', 'invMonthFilter', 'inventoryBody')" style="width:100%;">Clear Filters</button></div>
+                    </div>
                     <div class="table-responsive">
-                        <table class="data-table" id="reportTable" style="margin-top: 20px;">
-                            <thead><tr>
-                                <th>Date</th>
-                                <th>Feed Type</th>
-                                <th>Inventory Added (Bags)</th>
-                                <th>Sold (Bags)</th>
-                                <th>Damaged (Bags)</th>
-                                <th>Returned (Bags)</th>
-                                <th>Quantity Remain</th>
-                                <th>Total Amount Sold (GHS)</th>
-                            </tr></thead>
-                            <tbody id="reportPreviewBody"></tbody>
+                        <table class="data-table" id="inventoryTable">
+                            <thead><tr><th>Feed Type</th><th>Date Received</th><th>Weight (kg)</th><th>Qty (Bags)</th><th>Status</th><th>Unit Price (GHS)</th><th>Total Price (GHS)</th><th>Action</th></tr></thead>
+                            <tbody id="inventoryBody"></tbody>
                         </table>
                     </div>
                 </div>
-            </div>
 
-        </div> </div> <datalist id="feedTypeList"></datalist>
+                <div id="sales" class="section">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h1>Sales Management</h1>
+                        <button class="btn" onclick="window.openModal('addSaleModal')"><i class="fas fa-plus"></i> Record New Sale</button>
+                    </div>
+                    <div class="filter-bar">
+                        <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="salesSearchInput" onkeyup="window.filterTable('salesSearchInput', 'salesMonthFilter', 'salesBody')" placeholder="Search by Invoice, Customer, or Feed..." style="padding-left: 35px;"></div>
+                        <div style="flex: 1;"><input type="month" id="salesMonthFilter" onchange="window.filterTable('salesSearchInput', 'salesMonthFilter', 'salesBody')" title="Filter by Month"></div>
+                        <div><button class="btn btn-update" onclick="window.resetFilters('salesSearchInput', 'salesMonthFilter', 'salesBody')" style="width:100%;">Clear Filters</button></div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead><tr><th>Date</th><th>Invoice #</th><th>Customer Name</th><th>Feed Type</th><th>Qty (Bags)</th><th>Unit Price (GHS)</th><th>Total Amount (GHS)</th><th>Status</th><th>Action</th></tr></thead>
+                            <tbody id="salesBody"></tbody>
+                        </table>
+                    </div>
+                </div>
 
-    <div id="addBankModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addBankModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Record Bank Transaction</h2>
-        <form onsubmit="window.submitAddBankForm(event)">
-            <div class="form-row">
-                <div class="form-group"><label>Date</label><input type="date" id="bankDate" required></div>
-                <div class="form-group"><label>Transaction Type</label><select id="bankType" required><option value="Deposit">Deposit (Income)</option><option value="Withdrawal">Withdrawal (Expense)</option></select></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Reference / Check #</label><input type="text" id="bankRef" placeholder="Optional"></div>
-                <div class="form-group"><label>Amount (GHS)</label><input type="number" id="bankAmount" step="0.01" required></div>
-            </div>
-            <div class="form-group"><label>Description / Notes</label><input type="text" id="bankDesc" required placeholder="What was this for?"></div>
-            <button type="submit" class="btn" style="width: 100%;">Save Transaction</button>
-        </form>
-    </div></div>
+                <div id="returned" class="section">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h1>Returned Products</h1>
+                        <button class="btn" onclick="window.openModal('addReturnModal')"><i class="fas fa-plus"></i> Log Return</button>
+                    </div>
+                    <div class="filter-bar">
+                        <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="returnSearchInput" onkeyup="window.filterTable('returnSearchInput', 'returnMonthFilter', 'returnedBody')" placeholder="Search Customer, Feed, Reason..." style="padding-left: 35px;"></div>
+                        <div style="flex: 1;"><input type="month" id="returnMonthFilter" onchange="window.filterTable('returnSearchInput', 'returnMonthFilter', 'returnedBody')"></div>
+                        <div><button class="btn btn-update" onclick="window.resetFilters('returnSearchInput', 'returnMonthFilter', 'returnedBody')" style="width:100%;">Clear Filters</button></div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead><tr><th>Date Logged</th><th>Customer</th><th>Feed Type</th><th>Qty (Bags)</th><th>Reason for Return</th><th>Condition</th><th>Action</th></tr></thead>
+                            <tbody id="returnedBody"></tbody>
+                        </table>
+                    </div>
+                </div>
 
-    <div id="editBankModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editBankModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Bank Transaction</h2>
-        <form onsubmit="window.submitEditBankForm(event)">
-            <div class="form-row">
-                <div class="form-group"><label>Date</label><input type="date" id="editBankDate" required></div>
-                <div class="form-group"><label>Transaction Type</label><select id="editBankType" required><option value="Deposit">Deposit (Income)</option><option value="Withdrawal">Withdrawal (Expense)</option></select></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Reference / Check #</label><input type="text" id="editBankRef"></div>
-                <div class="form-group"><label>Amount (GHS)</label><input type="number" id="editBankAmount" step="0.01" required></div>
-            </div>
-            <div class="form-group"><label>Description / Notes</label><input type="text" id="editBankDesc" required></div>
-            <button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
-        </form>
-    </div></div>
+                <div id="damaged" class="section">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h1>Damaged Products</h1>
+                        <button class="btn" onclick="window.openModal('addDamageModal')"><i class="fas fa-plus"></i> Report Damage</button>
+                    </div>
+                    <div class="filter-bar">
+                        <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="damageSearchInput" onkeyup="window.filterTable('damageSearchInput', 'damageMonthFilter', 'damagedBody')" placeholder="Search Feed, Location, Description..." style="padding-left: 35px;"></div>
+                        <div style="flex: 1;"><input type="month" id="damageMonthFilter" onchange="window.filterTable('damageSearchInput', 'damageMonthFilter', 'damagedBody')"></div>
+                        <div><button class="btn btn-update" onclick="window.resetFilters('damageSearchInput', 'damageMonthFilter', 'damagedBody')" style="width:100%;">Clear Filters</button></div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead><tr><th>Date Reported</th><th>Feed Type</th><th>Qty (Bags)</th><th>Source Location</th><th>Damage Description</th><th>Loss (GHS)</th><th>Action</th></tr></thead>
+                            <tbody id="damagedBody"></tbody>
+                        </table>
+                    </div>
+                </div>
 
-    <div id="viewBankModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewBankModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Transaction Details</h2>
-        <div class="form-row">
-            <div class="form-group"><label>Date</label><input type="text" id="viewBankDate" disabled></div>
-            <div class="form-group"><label>Type</label><input type="text" id="viewBankType" disabled></div>
-        </div>
-        <div class="form-row">
-            <div class="form-group"><label>Reference / Check #</label><input type="text" id="viewBankRef" disabled></div>
-            <div class="form-group"><label>Amount (GHS)</label><input type="text" id="viewBankAmount" disabled></div>
-        </div>
-        <div class="form-group"><label>Description</label><input type="text" id="viewBankDesc" disabled></div>
-    </div></div>
+                <div id="bank" class="section">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h1>Bank Transactions</h1>
+                        <button class="btn" onclick="window.openModal('addBankModal')"><i class="fas fa-plus"></i> Record Transaction</button>
+                    </div>
+                    <div class="filter-bar">
+                        <div style="flex: 2; position: relative;"><i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #888;"></i><input type="text" id="bankSearchInput" onkeyup="window.filterTable('bankSearchInput', 'bankMonthFilter', 'bankBody')" placeholder="Search by Description or Check #..." style="padding-left: 35px;"></div>
+                        <div style="flex: 1;"><input type="month" id="bankMonthFilter" onchange="window.filterTable('bankSearchInput', 'bankMonthFilter', 'bankBody')"></div>
+                        <div><button class="btn btn-update" onclick="window.resetFilters('bankSearchInput', 'bankMonthFilter', 'bankBody')" style="width:100%;">Clear Filters</button></div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead><tr><th>Date</th><th>Type</th><th>Ref / Check #</th><th>Description</th><th>Amount (GHS)</th><th>Action</th></tr></thead>
+                            <tbody id="bankBody"></tbody>
+                        </table>
+                    </div>
+                </div>
 
-    <div id="addSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Record New Sale</h2>
-        <form onsubmit="window.submitAddSaleForm(event)">
-            <div class="form-row">
-                <div class="form-group"><label>Date</label><input type="date" id="saleDate" required></div>
-                <div class="form-group"><label>Invoice #</label><input type="text" id="saleInvoice" required></div>
-            </div>
-            <div class="form-group"><label>Customer Name</label><input type="text" id="saleCustomer" required></div>
-            <div class="form-group"><label>Feed Type</label><select id="saleType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
-            <div class="form-row">
-                <div class="form-group"><label>Qty (Bags)</label><input type="number" id="saleQty" required oninput="window.calcSaleTotal('saleQty', 'saleUnitPrice', 'saleAmount')"></div>
-                <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="saleUnitPrice" step="0.01" required oninput="window.calcSaleTotal('saleQty', 'saleUnitPrice', 'saleAmount')"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Total (GHS)</label><input type="number" id="saleAmount" step="0.01" required></div>
-                <div class="form-group"><label>Status</label><select id="saleStatus"><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div>
-            </div>
-            <button type="submit" class="btn" style="width: 100%;">Save</button>
-        </form>
-    </div></div>
-    
-    <div id="editSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Sale</h2>
-        <form onsubmit="window.submitEditSaleForm(event)">
-            <div class="form-row">
-                <div class="form-group"><label>Date</label><input type="date" id="editSaleDate" required></div>
-                <div class="form-group"><label>Invoice #</label><input type="text" id="editSaleInvoice" required></div>
-            </div>
-            <div class="form-group"><label>Customer</label><input type="text" id="editSaleCustomer" required></div>
-            <div class="form-group"><label>Feed Type</label><select id="editSaleType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
-            <div class="form-row">
-                <div class="form-group"><label>Qty (Bags)</label><input type="number" id="editSaleQty" required oninput="window.calcSaleTotal('editSaleQty', 'editSaleUnitPrice', 'editSaleAmount')"></div>
-                <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="editSaleUnitPrice" step="0.01" required oninput="window.calcSaleTotal('editSaleQty', 'editSaleUnitPrice', 'editSaleAmount')"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Total (GHS)</label><input type="number" id="editSaleAmount" step="0.01" required></div>
-                <div class="form-group"><label>Status</label><select id="editSaleStatus"><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div>
-            </div>
-            <button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
-        </form>
-    </div></div>
+                <div id="reports" class="section">
+                    <h1>Consolidated Monthly Report</h1>
+                    <div class="card" style="flex-direction: column; align-items: flex-start; gap: 15px; margin-top: 15px; padding: 25px;">
+                        <h3 style="margin:0; color: var(--primary-color); font-size: 18px;"><i class="fas fa-calendar-alt"></i> Report Parameters</h3>
+                        <div class="form-row" style="width: 100%; margin-top: 10px; align-items: flex-end;">
+                            <div class="form-group" style="flex: 1; margin: 0;"><label>Select Month</label><input type="month" id="reportMonthFilter"></div>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-update" onclick="window.generateReportPreview()"><i class="fas fa-search"></i> Generate Report</button>
+                                <button class="btn btn-success" onclick="window.downloadCSVReport()"><i class="fas fa-file-csv"></i> Download CSV</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="reportPreviewArea" style="display: none; margin-top: 35px; animation: fadeIn 0.4s ease-in-out;">
+                        <h2 style="border-bottom: 2px solid var(--secondary-color); padding-bottom: 10px; color: var(--primary-color);">Report For: <span id="previewMonthTitle"></span></h2>
+                        <div class="table-responsive">
+                            <table class="data-table" id="reportTable" style="margin-top: 20px;">
+                                <thead><tr>
+                                    <th>Date</th>
+                                    <th>Feed Type</th>
+                                    <th>Inventory Added (Bags)</th>
+                                    <th>Sold (Bags)</th>
+                                    <th>Damaged (Bags)</th>
+                                    <th>Returned (Bags)</th>
+                                    <th>Quantity Remain</th>
+                                    <th>Total Amount Sold (GHS)</th>
+                                </tr></thead>
+                                <tbody id="reportPreviewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
 
-    <div id="viewSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Sale Details</h2>
-        <div class="form-group"><label>Invoice / Date</label><input type="text" id="viewInvoiceDate" disabled></div>
-        <div class="form-group"><label>Customer Name</label><input type="text" id="viewCustomer" disabled></div>
-        <div class="form-group"><label>Feed Type</label><input type="text" id="viewType" disabled></div>
-        <div class="form-row">
-            <div class="form-group"><label>Qty</label><input type="text" id="viewQty" disabled></div>
-            <div class="form-group"><label>Unit Price</label><input type="text" id="viewUnitPrice" disabled></div>
-        </div>
-        <div class="form-row">
-            <div class="form-group"><label>Total Amount</label><input type="text" id="viewAmount" disabled></div>
-            <div class="form-group"><label>Status</label><input type="text" id="viewStatus" disabled></div>
-        </div>
-    </div></div>
+            </div> 
+        </div> 
 
-    <div id="addModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Add Stock</h2>
-        <form onsubmit="window.submitAddForm(event)">
-            <div class="form-row"><div class="form-group"><label>Feed Type</label><input type="text" id="addType" list="feedTypeList" autocomplete="off" required></div><div class="form-group"><label>Date Received</label><input type="date" id="addDate" required></div></div>
-            <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input type="number" id="addWeight" required></div><div class="form-group"><label>Quantity (Bags)</label><input type="number" id="addQty" required></div></div>
-            <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="addPrice" step="0.01" required></div><button type="submit" class="btn" style="width: 100%;">Save</button>
-        </form>
-    </div></div>
-    <div id="updateModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('updateModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Stock</h2>
-        <form onsubmit="window.submitUpdateInvForm(event)">
-            <div class="form-group"><label>Feed Type</label><input type="text" id="updType" list="feedTypeList" autocomplete="off" required></div>
-            <div class="form-row"><div class="form-group"><label>Date Received</label><input type="date" id="updDate" required></div><div class="form-group"><label>Quantity Added</label><input type="number" id="updQty" required></div></div>
-            <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="updPrice" step="0.01" required></div><button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
-        </form>
-    </div></div>
-    <div id="viewInvModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewInvModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Stock Details</h2>
-        <div class="form-row"><div class="form-group"><label>Feed Type</label><input type="text" id="viewInvType" disabled></div><div class="form-group"><label>Date Received</label><input type="text" id="viewInvDate" disabled></div></div>
-        <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input type="text" id="viewInvWeight" disabled></div><div class="form-group"><label>Initial Quantity Added</label><input type="text" id="viewInvQty" disabled></div></div>
-        <div class="form-row"><div class="form-group"><label>Price (GHS)</label><input type="text" id="viewInvPrice" disabled></div><div class="form-group"><label>Status</label><input type="text" id="viewInvStatus" disabled></div></div>
-    </div></div>
+        <datalist id="feedTypeList"></datalist>
 
-    <div id="addReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Log Return</h2>
-        <form onsubmit="window.submitAddReturnForm(event)">
-            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="returnDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="returnQty" required></div></div>
-            <div class="form-group"><label>Customer</label><input type="text" id="returnCustomer" required></div>
-            <div class="form-group"><label>Feed Type</label><select id="returnType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
-            <div class="form-group"><label>Reason</label><input type="text" id="returnReason" required></div><div class="form-group"><label>Condition</label><select id="returnCondition"><option value="Intact / Resalable">Intact / Resalable</option><option value="Damaged">Damaged</option></select></div><button type="submit" class="btn" style="width: 100%;">Save</button>
-        </form>
-    </div></div>
-    <div id="editReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Return</h2>
-        <form onsubmit="window.submitEditReturnForm(event)">
-            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editReturnDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="editReturnQty" required></div></div>
-            <div class="form-group"><label>Customer</label><input type="text" id="editReturnCustomer" required></div>
-            <div class="form-group"><label>Feed Type</label><select id="editReturnType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
-            <div class="form-group"><label>Reason</label><input type="text" id="editReturnReason" required></div><div class="form-group"><label>Condition</label><select id="editReturnCondition"><option value="Intact / Resalable">Intact / Resalable</option><option value="Damaged">Damaged</option></select></div><button type="submit" class="btn btn-update" style="width: 100%;">Save</button>
-        </form>
-    </div></div>
-    <div id="viewReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Return Details</h2>
-        <div class="form-row"><div class="form-group"><label>Date Logged</label><input type="text" id="viewReturnDate" disabled></div><div class="form-group"><label>Quantity (Bags)</label><input type="text" id="viewReturnQty" disabled></div></div>
-        <div class="form-group"><label>Customer</label><input type="text" id="viewReturnCustomer" disabled></div><div class="form-group"><label>Feed Type</label><input type="text" id="viewReturnType" disabled></div>
-        <div class="form-group"><label>Reason</label><input type="text" id="viewReturnReason" disabled></div><div class="form-group"><label>Condition</label><input type="text" id="viewReturnCondition" disabled></div>
-    </div></div>
+        <div id="addBankModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addBankModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Record Bank Transaction</h2>
+            <form onsubmit="window.submitAddBankForm(event)">
+                <div class="form-row">
+                    <div class="form-group"><label>Date</label><input type="date" id="bankDate" required></div>
+                    <div class="form-group"><label>Transaction Type</label><select id="bankType" required><option value="Deposit">Deposit (Income)</option><option value="Withdrawal">Withdrawal (Expense)</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Reference / Check #</label><input type="text" id="bankRef" placeholder="Optional"></div>
+                    <div class="form-group"><label>Amount (GHS)</label><input type="number" id="bankAmount" step="0.01" required></div>
+                </div>
+                <div class="form-group"><label>Description / Notes</label><input type="text" id="bankDesc" required placeholder="What was this for?"></div>
+                <button type="submit" class="btn" style="width: 100%;">Save Transaction</button>
+            </form>
+        </div></div>
 
-    <div id="addDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Report Damage</h2>
-        <form onsubmit="window.submitAddDamageForm(event)">
-            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="damageDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="damageQty" required></div></div>
-            <div class="form-group"><label>Feed Type</label><select id="damageType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
-            <div class="form-group"><label>Location</label><input type="text" id="damageLocation" required></div>
-            <div class="form-group"><label>Description</label><input type="text" id="damageDesc" required></div><div class="form-group"><label>Loss (GHS)</label><input type="number" id="damageLoss" step="0.01" required></div><button type="submit" class="btn btn-danger" style="width: 100%;">Save</button>
-        </form>
-    </div></div>
-    <div id="editDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Damage</h2>
-        <form onsubmit="window.submitEditDamageForm(event)">
-            <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editDamageDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="editDamageQty" required></div></div>
-            <div class="form-group"><label>Feed Type</label><select id="editDamageType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
-            <div class="form-group"><label>Location</label><input type="text" id="editDamageLocation" required></div>
-            <div class="form-group"><label>Description</label><input type="text" id="editDamageDesc" required></div><div class="form-group"><label>Loss (GHS)</label><input type="number" id="editDamageLoss" step="0.01" required></div><button type="submit" class="btn btn-update" style="width: 100%;">Save</button>
-        </form>
-    </div></div>
-    <div id="viewDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Damage Details</h2>
-        <div class="form-row"><div class="form-group"><label>Date</label><input type="text" id="viewDamageDate" disabled></div><div class="form-group"><label>Qty</label><input type="text" id="viewDamageQty" disabled></div></div>
-        <div class="form-group"><label>Feed Type</label><input type="text" id="viewDamageType" disabled></div><div class="form-group"><label>Location</label><input type="text" id="viewDamageLocation" disabled></div>
-        <div class="form-group"><label>Description</label><input type="text" id="viewDamageDesc" disabled></div><div class="form-group"><label>Loss (GHS)</label><input type="text" id="viewDamageLoss" disabled></div>
-    </div></div>
+        <div id="editBankModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editBankModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Bank Transaction</h2>
+            <form onsubmit="window.submitEditBankForm(event)">
+                <div class="form-row">
+                    <div class="form-group"><label>Date</label><input type="date" id="editBankDate" required></div>
+                    <div class="form-group"><label>Transaction Type</label><select id="editBankType" required><option value="Deposit">Deposit (Income)</option><option value="Withdrawal">Withdrawal (Expense)</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Reference / Check #</label><input type="text" id="editBankRef"></div>
+                    <div class="form-group"><label>Amount (GHS)</label><input type="number" id="editBankAmount" step="0.01" required></div>
+                </div>
+                <div class="form-group"><label>Description / Notes</label><input type="text" id="editBankDesc" required></div>
+                <button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
+            </form>
+        </div></div>
 
-    <script type="module">
+        <div id="viewBankModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewBankModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Transaction Details</h2>
+            <div class="form-row">
+                <div class="form-group"><label>Date</label><input type="text" id="viewBankDate" disabled></div>
+                <div class="form-group"><label>Type</label><input type="text" id="viewBankType" disabled></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Reference / Check #</label><input type="text" id="viewBankRef" disabled></div>
+                <div class="form-group"><label>Amount (GHS)</label><input type="text" id="viewBankAmount" disabled></div>
+            </div>
+            <div class="form-group"><label>Description</label><input type="text" id="viewBankDesc" disabled></div>
+        </div></div>
+
+        <div id="addSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Record New Sale</h2>
+            <form onsubmit="window.submitAddSaleForm(event)">
+                <div class="form-row">
+                    <div class="form-group"><label>Date</label><input type="date" id="saleDate" required></div>
+                    <div class="form-group"><label>Invoice #</label><input type="text" id="saleInvoice" required></div>
+                </div>
+                <div class="form-group"><label>Customer Name</label><input type="text" id="saleCustomer" required></div>
+                <div class="form-group"><label>Feed Type</label><select id="saleType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Qty (Bags)</label><input type="number" id="saleQty" required oninput="window.calcSaleTotal('saleQty', 'saleUnitPrice', 'saleAmount')"></div>
+                    <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="saleUnitPrice" step="0.01" required oninput="window.calcSaleTotal('saleQty', 'saleUnitPrice', 'saleAmount')"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Total (GHS)</label><input type="number" id="saleAmount" step="0.01" required></div>
+                    <div class="form-group"><label>Status</label><select id="saleStatus"><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Save</button>
+            </form>
+        </div></div>
+        
+        <div id="editSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Sale</h2>
+            <form onsubmit="window.submitEditSaleForm(event)">
+                <div class="form-row">
+                    <div class="form-group"><label>Date</label><input type="date" id="editSaleDate" required></div>
+                    <div class="form-group"><label>Invoice #</label><input type="text" id="editSaleInvoice" required></div>
+                </div>
+                <div class="form-group"><label>Customer</label><input type="text" id="editSaleCustomer" required></div>
+                <div class="form-group"><label>Feed Type</label><select id="editSaleType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Qty (Bags)</label><input type="number" id="editSaleQty" required oninput="window.calcSaleTotal('editSaleQty', 'editSaleUnitPrice', 'editSaleAmount')"></div>
+                    <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="editSaleUnitPrice" step="0.01" required oninput="window.calcSaleTotal('editSaleQty', 'editSaleUnitPrice', 'editSaleAmount')"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Total (GHS)</label><input type="number" id="editSaleAmount" step="0.01" required></div>
+                    <div class="form-group"><label>Status</label><select id="editSaleStatus"><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div>
+                </div>
+                <button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
+            </form>
+        </div></div>
+
+        <div id="viewSaleModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewSaleModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Sale Details</h2>
+            <div class="form-group"><label>Invoice / Date</label><input type="text" id="viewInvoiceDate" disabled></div>
+            <div class="form-group"><label>Customer Name</label><input type="text" id="viewCustomer" disabled></div>
+            <div class="form-group"><label>Feed Type</label><input type="text" id="viewType" disabled></div>
+            <div class="form-row">
+                <div class="form-group"><label>Qty</label><input type="text" id="viewQty" disabled></div>
+                <div class="form-group"><label>Unit Price</label><input type="text" id="viewUnitPrice" disabled></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Total Amount</label><input type="text" id="viewAmount" disabled></div>
+                <div class="form-group"><label>Status</label><input type="text" id="viewStatus" disabled></div>
+            </div>
+        </div></div>
+
+        <div id="addModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Add Stock</h2>
+            <form onsubmit="window.submitAddForm(event)">
+                <div class="form-row"><div class="form-group"><label>Feed Type</label><input type="text" id="addType" list="feedTypeList" autocomplete="off" required></div><div class="form-group"><label>Date Received</label><input type="date" id="addDate" required></div></div>
+                <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input type="number" id="addWeight" required></div><div class="form-group"><label>Quantity (Bags)</label><input type="number" id="addQty" required></div></div>
+                <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="addPrice" step="0.01" required></div><button type="submit" class="btn" style="width: 100%;">Save</button>
+            </form>
+        </div></div>
+        <div id="updateModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('updateModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Stock</h2>
+            <form onsubmit="window.submitUpdateInvForm(event)">
+                <div class="form-group"><label>Feed Type</label><input type="text" id="updType" list="feedTypeList" autocomplete="off" required></div>
+                <div class="form-row"><div class="form-group"><label>Date Received</label><input type="date" id="updDate" required></div><div class="form-group"><label>Quantity Added</label><input type="number" id="updQty" required></div></div>
+                <div class="form-group"><label>Unit Price (GHS)</label><input type="number" id="updPrice" step="0.01" required></div><button type="submit" class="btn btn-update" style="width: 100%;">Save Changes</button>
+            </form>
+        </div></div>
+        <div id="viewInvModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewInvModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Stock Details</h2>
+            <div class="form-row"><div class="form-group"><label>Feed Type</label><input type="text" id="viewInvType" disabled></div><div class="form-group"><label>Date Received</label><input type="text" id="viewInvDate" disabled></div></div>
+            <div class="form-row"><div class="form-group"><label>Weight (kg)</label><input type="text" id="viewInvWeight" disabled></div><div class="form-group"><label>Initial Quantity Added</label><input type="text" id="viewInvQty" disabled></div></div>
+            <div class="form-row"><div class="form-group"><label>Price (GHS)</label><input type="text" id="viewInvPrice" disabled></div><div class="form-group"><label>Status</label><input type="text" id="viewInvStatus" disabled></div></div>
+        </div></div>
+
+        <div id="addReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Log Return</h2>
+            <form onsubmit="window.submitAddReturnForm(event)">
+                <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="returnDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="returnQty" required></div></div>
+                <div class="form-group"><label>Customer</label><input type="text" id="returnCustomer" required></div>
+                <div class="form-group"><label>Feed Type</label><select id="returnType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
+                <div class="form-group"><label>Reason</label><input type="text" id="returnReason" required></div><div class="form-group"><label>Condition</label><select id="returnCondition"><option value="Intact / Resalable">Intact / Resalable</option><option value="Damaged">Damaged</option></select></div><button type="submit" class="btn" style="width: 100%;">Save</button>
+            </form>
+        </div></div>
+        <div id="editReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Return</h2>
+            <form onsubmit="window.submitEditReturnForm(event)">
+                <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editReturnDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="editReturnQty" required></div></div>
+                <div class="form-group"><label>Customer</label><input type="text" id="editReturnCustomer" required></div>
+                <div class="form-group"><label>Feed Type</label><select id="editReturnType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
+                <div class="form-group"><label>Reason</label><input type="text" id="editReturnReason" required></div><div class="form-group"><label>Condition</label><select id="editReturnCondition"><option value="Intact / Resalable">Intact / Resalable</option><option value="Damaged">Damaged</option></select></div><button type="submit" class="btn btn-update" style="width: 100%;">Save</button>
+            </form>
+        </div></div>
+        <div id="viewReturnModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewReturnModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Return Details</h2>
+            <div class="form-row"><div class="form-group"><label>Date Logged</label><input type="text" id="viewReturnDate" disabled></div><div class="form-group"><label>Quantity (Bags)</label><input type="text" id="viewReturnQty" disabled></div></div>
+            <div class="form-group"><label>Customer</label><input type="text" id="viewReturnCustomer" disabled></div><div class="form-group"><label>Feed Type</label><input type="text" id="viewReturnType" disabled></div>
+            <div class="form-group"><label>Reason</label><input type="text" id="viewReturnReason" disabled></div><div class="form-group"><label>Condition</label><input type="text" id="viewReturnCondition" disabled></div>
+        </div></div>
+
+        <div id="addDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('addDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Report Damage</h2>
+            <form onsubmit="window.submitAddDamageForm(event)">
+                <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="damageDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="damageQty" required></div></div>
+                <div class="form-group"><label>Feed Type</label><select id="damageType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
+                <div class="form-group"><label>Location</label><input type="text" id="damageLocation" required></div>
+                <div class="form-group"><label>Description</label><input type="text" id="damageDesc" required></div><div class="form-group"><label>Loss (GHS)</label><input type="number" id="damageLoss" step="0.01" required></div><button type="submit" class="btn btn-danger" style="width: 100%;">Save</button>
+            </form>
+        </div></div>
+        <div id="editDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('editDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Edit Damage</h2>
+            <form onsubmit="window.submitEditDamageForm(event)">
+                <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="editDamageDate" required></div><div class="form-group"><label>Quantity</label><input type="number" id="editDamageQty" required></div></div>
+                <div class="form-group"><label>Feed Type</label><select id="editDamageType" required><option value="" disabled selected>Select Feed Type...</option></select></div>
+                <div class="form-group"><label>Location</label><input type="text" id="editDamageLocation" required></div>
+                <div class="form-group"><label>Description</label><input type="text" id="editDamageDesc" required></div><div class="form-group"><label>Loss (GHS)</label><input type="number" id="editDamageLoss" step="0.01" required></div><button type="submit" class="btn btn-update" style="width: 100%;">Save</button>
+            </form>
+        </div></div>
+        <div id="viewDamageModal" class="modal-overlay"><div class="modal-content"><span class="close-btn" onclick="window.closeModal('viewDamageModal')">&times;</span><h2 style="margin-top: 0; color: var(--primary-color);">Damage Details</h2>
+            <div class="form-row"><div class="form-group"><label>Date</label><input type="text" id="viewDamageDate" disabled></div><div class="form-group"><label>Qty</label><input type="text" id="viewDamageQty" disabled></div></div>
+            <div class="form-group"><label>Feed Type</label><input type="text" id="viewDamageType" disabled></div><div class="form-group"><label>Location</label><input type="text" id="viewDamageLocation" disabled></div>
+            <div class="form-group"><label>Description</label><input type="text" id="viewDamageDesc" disabled></div><div class="form-group"><label>Loss (GHS)</label><input type="text" id="viewDamageLoss" disabled></div>
+        </div></div>
+        
+    </div> <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD0Tya77ZTWkuKoGmFJCDJqA1xnWoibxG8",
@@ -440,13 +481,62 @@
             appId: "1:346605678047:web:8276dee115966fa246e86a",
             measurementId: "G-LK41VQDCWD"
         };
+        
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app); // Initialize Authentication
 
         let dataState = { inventory: [], sales: [], returns: [], damages: [], bank: [] };
         let activeEditId = null;
+        let dbListeners = []; // Store listener unsubscribes so we can clear them on logout
+        let salesTrendChartInstance = null;
 
-        // PWA Installation Logic
+        // --- AUTHENTICATION LOGIC ---
+
+        window.handleLogin = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+            
+            try {
+                errorDiv.style.display = 'none';
+                await signInWithEmailAndPassword(auth, email, pass);
+            } catch (err) {
+                errorDiv.innerText = "Invalid credentials. Please try again.";
+                errorDiv.style.display = 'block';
+            }
+        };
+
+        window.handleLogout = async () => {
+            if (confirm("Are you sure you want to log out?")) {
+                await signOut(auth);
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            const loginScreen = document.getElementById('loginScreen');
+            const appContainer = document.getElementById('appContainer');
+            
+            if (user) {
+                // User is signed in
+                loginScreen.style.display = 'none';
+                appContainer.style.display = 'flex';
+                initializeDatabaseListeners(); // Start fetching data securely
+            } else {
+                // User is signed out
+                loginScreen.style.display = 'flex';
+                appContainer.style.display = 'none';
+                
+                // Stop fetching data and clear arrays to protect memory on logout
+                dbListeners.forEach(unsub => unsub());
+                dbListeners = [];
+                dataState = { inventory: [], sales: [], returns: [], damages: [], bank: [] };
+            }
+        });
+
+
+        // --- PWA Installation Logic ---
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
@@ -480,7 +570,7 @@
             });
         }
 
-        // Routing & History Logic
+        // --- Routing & History Logic ---
         window.switchTab = (sectionId, clickedElement) => {
             history.pushState(null, null, `#${sectionId}`);
             activateTab(sectionId, clickedElement);
@@ -488,7 +578,7 @@
 
         function activateTab(sectionId, clickedElement = null) {
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-            document.querySelectorAll('.nav-item:not(#installAppBtn)').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.nav-item:not(#installAppBtn):not(.logout-btn)').forEach(item => item.classList.remove('active'));
             
             const targetSection = document.getElementById(sectionId);
             if (targetSection) targetSection.classList.add('active');
@@ -506,17 +596,13 @@
 
         window.addEventListener('popstate', () => {
             let hash = window.location.hash.substring(1);
-            if (!hash || !document.getElementById(hash)) {
-                hash = 'dashboard';
-            }
+            if (!hash || !document.getElementById(hash)) { hash = 'dashboard'; }
             activateTab(hash);
         });
 
         window.addEventListener('load', () => {
             let hash = window.location.hash.substring(1);
-            if (hash && document.getElementById(hash)) {
-                activateTab(hash);
-            }
+            if (hash && document.getElementById(hash)) { activateTab(hash); }
         });
 
         window.toggleSidebar = () => {
@@ -563,9 +649,7 @@
                 if(el) {
                     const currentVal = (el.value || '').trim().toUpperCase(); 
                     el.innerHTML = selectOptionsHTML;
-                    if(currentVal && uniqueTypes.includes(currentVal)) {
-                        el.value = currentVal;
-                    }
+                    if(currentVal && uniqueTypes.includes(currentVal)) { el.value = currentVal; }
                 }
             });
 
@@ -573,8 +657,6 @@
             const datalist = document.getElementById('feedTypeList');
             if(datalist) datalist.innerHTML = datalistOptionsHTML;
         };
-
-        let salesTrendChartInstance = null;
         
         function updateDashboard() {
             let productStats = {}; 
@@ -674,76 +756,87 @@
 
         const formatFeedType = (t) => (t || 'Unknown').trim().toUpperCase();
 
-        onSnapshot(collection(db, "inventory"), (snapshot) => {
-            dataState.inventory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            document.getElementById('inventoryBody').innerHTML = dataState.inventory.map(item => {
-                const price = Number(item.price || 0);
-                const qty = Number(item.qty || 0);
-                const weight = Number(item.weight || 0);
-                const type = formatFeedType(item.type);
-                const date = item.date || '-';
-                const totalValue = (qty * price).toLocaleString('en-US', {minimumFractionDigits: 2});
-                return `<tr><td>${type}</td><td>${date}</td><td>${weight}</td><td>${qty} bags</td><td class="status-good">Added</td><td>${price.toFixed(2)}</td><td>${totalValue}</td><td><div class="action-group"><button class="btn btn-icon btn-update" onclick="window.editInventory('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('inventory', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
-            }).join(''); 
-            
-            window.updateProductDropdowns(); 
-            updateDashboard();
-        }, (error) => console.error("Inventory Sync Error: ", error));
+        // --- DATABASE LISTENER WRAPPER ---
+        function initializeDatabaseListeners() {
+            // Clear any existing listeners first
+            dbListeners.forEach(unsub => unsub());
+            dbListeners = [];
 
-        onSnapshot(collection(db, "sales"), (snapshot) => {
-            dataState.sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            document.getElementById('salesBody').innerHTML = dataState.sales.map(item => {
-                const date = item.date || '-';
-                const invoice = item.invoice || '-';
-                const customer = item.customer || 'Unknown';
-                const type = formatFeedType(item.type);
-                const qty = Number(item.qty || 0);
-                const unitPrice = Number(item.unitPrice || 0);
-                const amount = Number(item.amount || 0);
-                const status = item.status || 'Pending';
-                return `<tr><td>${date}</td><td>${invoice}</td><td>${customer}</td><td>${type}</td><td>${qty}</td><td>${unitPrice.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td>${amount.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td class="${status === 'Paid' ? 'status-good' : 'status-warning'}">${status}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewSale('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editSale('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('sales', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
-            }).join(''); updateDashboard();
-        }, (error) => console.error("Sales Sync Error: ", error));
+            const unsubInv = onSnapshot(collection(db, "inventory"), (snapshot) => {
+                dataState.inventory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                document.getElementById('inventoryBody').innerHTML = dataState.inventory.map(item => {
+                    const price = Number(item.price || 0);
+                    const qty = Number(item.qty || 0);
+                    const weight = Number(item.weight || 0);
+                    const type = formatFeedType(item.type);
+                    const date = item.date || '-';
+                    const totalValue = (qty * price).toLocaleString('en-US', {minimumFractionDigits: 2});
+                    return `<tr><td>${type}</td><td>${date}</td><td>${weight}</td><td>${qty} bags</td><td class="status-good">Added</td><td>${price.toFixed(2)}</td><td>${totalValue}</td><td><div class="action-group"><button class="btn btn-icon btn-update" onclick="window.editInventory('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('inventory', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
+                }).join(''); 
+                window.updateProductDropdowns(); 
+                updateDashboard();
+            }, (error) => console.error("Inventory Sync Error: ", error));
+            dbListeners.push(unsubInv);
 
-        onSnapshot(collection(db, "returned"), (snapshot) => {
-            dataState.returns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            document.getElementById('returnedBody').innerHTML = dataState.returns.map(item => {
-                const date = item.date || '-';
-                const customer = item.customer || 'Unknown';
-                const type = formatFeedType(item.type);
-                const qty = Number(item.qty || 0);
-                const reason = item.reason || '-';
-                const condition = item.condition || 'Unknown';
-                return `<tr><td>${date}</td><td>${customer}</td><td>${type}</td><td>${qty}</td><td>${reason}</td><td class="${condition.includes('Damaged') ? 'status-low' : 'status-good'}">${condition}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewReturn('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editReturn('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('returned', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
-            }).join(''); updateDashboard();
-        }, (error) => console.error("Returns Sync Error: ", error));
+            const unsubSales = onSnapshot(collection(db, "sales"), (snapshot) => {
+                dataState.sales = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                document.getElementById('salesBody').innerHTML = dataState.sales.map(item => {
+                    const date = item.date || '-';
+                    const invoice = item.invoice || '-';
+                    const customer = item.customer || 'Unknown';
+                    const type = formatFeedType(item.type);
+                    const qty = Number(item.qty || 0);
+                    const unitPrice = Number(item.unitPrice || 0);
+                    const amount = Number(item.amount || 0);
+                    const status = item.status || 'Pending';
+                    return `<tr><td>${date}</td><td>${invoice}</td><td>${customer}</td><td>${type}</td><td>${qty}</td><td>${unitPrice.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td>${amount.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td class="${status === 'Paid' ? 'status-good' : 'status-warning'}">${status}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewSale('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editSale('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('sales', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
+                }).join(''); updateDashboard();
+            }, (error) => console.error("Sales Sync Error: ", error));
+            dbListeners.push(unsubSales);
 
-        onSnapshot(collection(db, "damaged"), (snapshot) => {
-            dataState.damages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            document.getElementById('damagedBody').innerHTML = dataState.damages.map(item => {
-                const date = item.date || '-';
-                const type = formatFeedType(item.type);
-                const qty = Number(item.qty || 0);
-                const location = item.location || '-';
-                const desc = item.desc || '-';
-                const loss = Number(item.loss || 0);
-                return `<tr><td>${date}</td><td>${type}</td><td>${qty}</td><td>${location}</td><td>${desc}</td><td>${loss.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewDamage('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editDamage('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('damaged', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
-            }).join(''); updateDashboard();
-        }, (error) => console.error("Damages Sync Error: ", error));
+            const unsubReturns = onSnapshot(collection(db, "returned"), (snapshot) => {
+                dataState.returns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                document.getElementById('returnedBody').innerHTML = dataState.returns.map(item => {
+                    const date = item.date || '-';
+                    const customer = item.customer || 'Unknown';
+                    const type = formatFeedType(item.type);
+                    const qty = Number(item.qty || 0);
+                    const reason = item.reason || '-';
+                    const condition = item.condition || 'Unknown';
+                    return `<tr><td>${date}</td><td>${customer}</td><td>${type}</td><td>${qty}</td><td>${reason}</td><td class="${condition.includes('Damaged') ? 'status-low' : 'status-good'}">${condition}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewReturn('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editReturn('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('returned', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
+                }).join(''); updateDashboard();
+            }, (error) => console.error("Returns Sync Error: ", error));
+            dbListeners.push(unsubReturns);
 
-        onSnapshot(collection(db, "bank"), (snapshot) => {
-            dataState.bank = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            document.getElementById('bankBody').innerHTML = dataState.bank.map(item => {
-                const date = item.date || '-';
-                const type = item.type || 'Deposit';
-                const ref = item.ref || '-';
-                const desc = item.desc || '-';
-                const amt = Number(item.amount || 0);
-                const typeStyle = type === 'Deposit' ? 'status-good' : 'status-low';
-                return `<tr><td>${date}</td><td class="${typeStyle}">${type}</td><td>${ref}</td><td>${desc}</td><td>${amt.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewBank('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editBank('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('bank', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
-            }).join(''); 
-            updateDashboard();
-        }, (error) => console.error("Bank Sync Error: ", error));
+            const unsubDamages = onSnapshot(collection(db, "damaged"), (snapshot) => {
+                dataState.damages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                document.getElementById('damagedBody').innerHTML = dataState.damages.map(item => {
+                    const date = item.date || '-';
+                    const type = formatFeedType(item.type);
+                    const qty = Number(item.qty || 0);
+                    const location = item.location || '-';
+                    const desc = item.desc || '-';
+                    const loss = Number(item.loss || 0);
+                    return `<tr><td>${date}</td><td>${type}</td><td>${qty}</td><td>${location}</td><td>${desc}</td><td>${loss.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewDamage('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editDamage('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('damaged', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
+                }).join(''); updateDashboard();
+            }, (error) => console.error("Damages Sync Error: ", error));
+            dbListeners.push(unsubDamages);
+
+            const unsubBank = onSnapshot(collection(db, "bank"), (snapshot) => {
+                dataState.bank = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                document.getElementById('bankBody').innerHTML = dataState.bank.map(item => {
+                    const date = item.date || '-';
+                    const type = item.type || 'Deposit';
+                    const ref = item.ref || '-';
+                    const desc = item.desc || '-';
+                    const amt = Number(item.amount || 0);
+                    const typeStyle = type === 'Deposit' ? 'status-good' : 'status-low';
+                    return `<tr><td>${date}</td><td class="${typeStyle}">${type}</td><td>${ref}</td><td>${desc}</td><td>${amt.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td><div class="action-group"><button class="btn btn-icon btn-info" onclick="window.viewBank('${item.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-icon btn-update" onclick="window.editBank('${item.id}')"><i class="fas fa-edit"></i></button><button class="btn btn-icon btn-danger" onclick="window.deleteRecord('bank', '${item.id}')"><i class="fas fa-trash"></i></button></div></td></tr>`
+                }).join(''); 
+                updateDashboard();
+            }, (error) => console.error("Bank Sync Error: ", error));
+            dbListeners.push(unsubBank);
+        }
 
         window.deleteRecord = async (colName, id) => { if (confirm(`Delete this record from ${colName}?`)) await deleteDoc(doc(db, colName, id)); };
 
